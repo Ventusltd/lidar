@@ -164,7 +164,7 @@ def write_tiles(out_dir, cls, asp, oe, on, site_name, spacing_mm=1000):
                  tile_m=TILE_M, spacing_m=spacing_mm / 1000, method="horn", classes_pct=LABELS,
                  aspect="0..7 downslope N NE E SE S SW W NW, 8 flat (<0.5 %), 255 no data",
                  tiles=entries, generated_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
-    with open(os.path.join(out_dir, INDEX), "w", encoding="utf-8") as f:
+    with open(os.path.join(out_dir, INDEX), "w", encoding="utf-8", newline="\n") as f:
         json.dump(index, f, indent=1)
     return index
 
@@ -268,7 +268,7 @@ def main(argv=None):
     index = write_tiles(out, cls, asp, oe, on, os.path.basename(os.path.normpath(a.site)), int(round(sp * 1000)))
     rec.update(tiles=len(index["tiles"]), script_sha256=hashlib.sha256(open(__file__, "rb").read()).hexdigest(),
                index_sha256=hashlib.sha256(open(os.path.join(out, INDEX), "rb").read()).hexdigest())
-    with open(os.path.join(out, RECEIPT), "w") as f:
+    with open(os.path.join(out, RECEIPT), "w", encoding="utf-8", newline="\n") as f:
         json.dump(rec, f, indent=1)
     print(json.dumps({k: rec[k] for k in ("device", "valid", "photons", "photon_share", "max_diff_pp", "breaks",
                                           "share", "witness", "tiles", "wall_s", "index_sha256")}, indent=1))

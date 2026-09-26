@@ -128,7 +128,8 @@ def cut_grid(grid, origin_e, origin_n, out_dir, site_name, source=""):
         attribution=ATTRIBUTION, source=source,
         generated_utc=datetime.now(timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"))
-    with open(os.path.join(out_dir, "tiles.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(out_dir, "tiles.json"), "w", encoding="utf-8",
+              newline="\n") as f:
         json.dump(manifest, f, indent=1, ensure_ascii=False)
     return manifest
 

@@ -95,7 +95,7 @@ def synth(out, tiles_e=2, tiles_n=2, spacing_m=1.0, oe=400000, on=300000, seed=S
     os.makedirs(out, exist_ok=True)
     np.save(os.path.join(out, "source.npy"), z)
     json.dump({"origin_e_m": oe, "origin_n_m": on, "spacing_m": spacing_m, "rows": "south_to_north",
-               "synthetic": True, "seed": seed}, open(os.path.join(out, "source.json"), "w"), indent=1)
+               "synthetic": True, "seed": seed}, open(os.path.join(out, "source.json"), "w", encoding="utf-8", newline="\n"), indent=1)
     tiles, step = [], N - 1
     for tn in range(tiles_n):
         for te in range(tiles_e):
@@ -104,7 +104,7 @@ def synth(out, tiles_e=2, tiles_n=2, spacing_m=1.0, oe=400000, on=300000, seed=S
             write_ght(os.path.join(out, name), z[tn * step:tn * step + N, te * step:te * step + N],
                       e0, n0, int(round(spacing_m * 1000)))
             tiles.append({"file": name, "origin_e_m": e0, "origin_n_m": n0})
-    json.dump({"format": "GGH1", "samples": N, "tiles": tiles}, open(os.path.join(out, "tiles.json"), "w"), indent=1)
+    json.dump({"format": "GGH1", "samples": N, "tiles": tiles}, open(os.path.join(out, "tiles.json"), "w", encoding="utf-8", newline="\n"), indent=1)
     return z
 
 
@@ -336,7 +336,7 @@ def write_receipt(tiles_dir, receipt):
     if os.path.exists(tj):
         meta = json.load(open(tj))
         meta["receipt"] = sha
-        with open(tj, "w") as f:
+        with open(tj, "w", encoding="utf-8", newline="\n") as f:
             json.dump(meta, f, indent=1)
     return path, sha
 
