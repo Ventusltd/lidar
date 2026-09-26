@@ -20,6 +20,8 @@ HEDGE_R = 3         # narrow cells within 3 m (chessboard) of a kept run are hed
 MIN_LEN_M = 15.0    # a hedgerow is at least this long
 SIMPLIFY_M = 0.75   # Douglas-Peucker tolerance
 FRINGE_M = 2        # narrow cells this close to wide vegetation are the wood's edge, not hedge
+JOIN_M = 7.0        # skeleton ends this close are one hedge for the length test: a 4-5 m gate plus
+                    # the metre or so thinning takes off each end
 SPUR_M = 3.0        # skeleton pieces shorter than this inside a kept run are spurs
 DEPTH_MAX = 8       # erosion depth cap when measuring half-widths
 
@@ -164,8 +166,11 @@ def simplify(pts, tol=SIMPLIFY_M):
     return [tuple(map(int, p)) for p in a[keep]]
 
 
-def components(lines):
-    """Group traced polylines that share a cell (8-connected skeleton pieces) -> list of index lists."""
+def components(lines, join=0.0):
+    """Group traced polylines that share a cell (8-connected skeleton pieces) -> list of index lists.
+
+    join > 0 also groups pieces whose ends lie within join metres (a hedge broken by a field gate).
+    """
     parent = list(range(len(lines)))
 
     def find(i):
@@ -179,6 +184,13 @@ def components(lines):
             j = owner.setdefault(p, i)
             if j != i:
                 parent[find(i)] = find(j)
+    if join > 0 and lines:
+        ends = np.asarray([p for l in lines for p in (l[0], l[-1])], float)
+        who = np.repeat(np.arange(len(lines)), 2)
+        for a in range(len(ends)):
+            d = np.hypot(*(ends[a + 1:] - ends[a]).T)
+            for b in np.nonzero(d <= join)[0] + a + 1:
+                parent[find(int(who[a]))] = find(int(who[b]))
     groups = {}
     for i in range(len(lines)):
         groups.setdefault(find(i), []).append(i)
@@ -205,7 +217,7 @@ def hedgerows(veg, chm, oe=0, on=0):
     pieces = trace(skel)
     keep_px = np.zeros(veg.shape, bool)
     lines, runs, dropped = [], 0, 0
-    for group in components(pieces):
+    for group in components(pieces, JOIN_M):
         cells = np.asarray([p for i in group for p in pieces[i]])
         span = float(np.hypot(*(cells.max(0) - cells.min(0))))
         if span < MIN_LEN_M:
@@ -225,7 +237,7 @@ def hedgerows(veg, chm, oe=0, on=0):
                               length_m=round(L, 1), width_m=round(float(2 * dep[r, c].mean() + 1), 1),
                               mean_h=round(float(hmax[r, c].mean()), 2), max_h=round(float(hmax[r, c].max()), 2)))
     hedge = veg & narrow & dilate(keep_px, HEDGE_R)
-    stats = dict(open_r_m=OPEN_R, fringe_m=FRINGE_M, hedge_r_m=HEDGE_R, min_len_m=MIN_LEN_M, spur_m=SPUR_M,
+    stats = dict(open_r_m=OPEN_R, fringe_m=FRINGE_M, join_m=JOIN_M, hedge_r_m=HEDGE_R, min_len_m=MIN_LEN_M, spur_m=SPUR_M,
                  simplify_m=SIMPLIFY_M, narrow_cells=int(narrow.sum()), wide_cells=int(wide.sum()),
                  skeleton_cells=int(skel.sum()), runs_kept=runs, runs_too_short=dropped, polylines=len(lines),
                  hedge_km=round(sum(l["length_m"] for l in lines) / 1000, 3))

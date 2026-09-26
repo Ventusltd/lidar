@@ -59,6 +59,35 @@ def test_scene_classes_and_heights():
         assert all(88 <= p[1] <= 93 for l in lines for p in l["pts"])
 
 
+def test_lattice_mast_and_specks_are_never_shown():
+    n = 97
+    y, x = np.mgrid[0:n, 0:n].astype(np.float64)
+    dtm = 80.0 + 0.0 * x
+    chm = np.zeros((n, n))
+    # a porous 40 m lattice tower: four legs thickening to the ground, a 21 m cross-arm, open between
+    for cx, cy in ((44, 44), (52, 44), (44, 52), (52, 52)):
+        chm[cy - 1:cy + 1, cx - 1:cx + 1] = rng.uniform(5, 30, (2, 2))
+    chm[47:50, 47:50] = [[34, 40, 33], [39, 12, 38], [31, 37, 35]]
+    chm[48, 38:59] = 30 + rng.uniform(-1, 1, 21)
+    chm[20, 20] = 10.0                                             # a lone return 10 m up (a wire, a bird)
+    fz, lz = dtm + chm, dtm.copy()                                 # porous: every last return reaches the ground
+    for gpu in GPU:
+        rec, cls, hq, _ = ct.run(dtm, fz, lz, use_gpu=gpu)
+        tall = chm >= ct.H_MIN
+        assert not np.isin(cls[tall], (ct.HEDGE, ct.TREE)).any(), np.unique(cls[tall], return_counts=True)
+        assert cls[48, 48 + 1] == ct.STRUCT and cls[20, 20] in (ct.UNSURE, ct.STRUCT)
+        assert rec["mast_cells"] > 0 and (hq == 0).all()
+
+
+def test_gate_gap_joins_two_short_runs():
+    veg = np.zeros((30, 60), bool); chm = np.where(veg, 0.0, 2.0)
+    veg[14:16, 5:17] = True; veg[14:16, 20:32] = True                # 12 m, a 3 m gate, 12 m
+    _, _, lines, st = cl.hedgerows(veg, chm)
+    assert st["runs_kept"] == 1 and len(lines) == 2, st
+    veg[14:16, 20:32] = False
+    assert cl.hedgerows(veg, chm)[3]["runs_kept"] == 0
+
+
 def test_pair_agrees_between_gpu_and_cpu():
     if len(GPU) < 2:
         return
@@ -98,26 +127,26 @@ def test_morphology():
     assert d[11, 20] == 1 and d[26, 26] >= 5
 
 
-def test_tiles_index_and_hedges(tmp):
+def test_tiles_index_and_hedges(tmp_path):
     n = 2 * ct.TILE_M + 1
     dtm, fz, lz, _ = scene(n)
     rec, cls, hq, lines = ct.run(dtm, fz, lz, 400000, 300000, use_gpu=False, witness_on=False)
-    idx = ct.write_tiles(str(tmp), cls, hq, lines, 400000, 300000, "synth")
-    raw = open(tmp / ct.INDEX, "rb").read()
-    assert b"\r\n" not in raw and b"\r\n" not in open(tmp / ct.HEDGES, "rb").read()
+    idx = ct.write_tiles(str(tmp_path), cls, hq, lines, 400000, 300000, "synth")
+    raw = open(tmp_path / ct.INDEX, "rb").read()
+    assert b"\r\n" not in raw and b"\r\n" not in open(tmp_path / ct.HEDGES, "rb").read()
     assert idx["shown"] == [1, 2] and idx["licence"] == "OGL-3.0" and "Environment Agency" in idx["attribution"]
-    assert hashlib.sha256(open(tmp / ct.HEDGES, "rb").read()).hexdigest() == idx["hedges"]["sha256"]
-    hed = json.load(open(tmp / ct.HEDGES))
+    assert hashlib.sha256(open(tmp_path / ct.HEDGES, "rb").read()).hexdigest() == idx["hedges"]["sha256"]
+    hed = json.load(open(tmp_path / ct.HEDGES))
     assert hed["lines"] and hed["lines"][0]["pts"][0][0] >= 400000
     for t in idx["tiles"]:
-        blob = open(tmp / t["file"], "rb").read()
+        blob = open(tmp_path / t["file"], "rb").read()
         assert hashlib.sha256(blob).hexdigest() == t["sha256"]
         head, c, h = ct.decode(blob)
         r0, c0 = t["n0"] - 300000, t["e0"] - 400000
         assert (c == cls[r0:r0 + ct.N, c0:c0 + ct.N]).all() and (h == hq[r0:r0 + ct.N, c0:c0 + ct.N]).all()
         assert head["shown_count"] == t["hedge"] + t["tree"] and head["height_step_mm"] == 200
-    a = ct.decode(open(tmp / "tiles/0_0.gcn", "rb").read())[1]
-    b = ct.decode(open(tmp / "tiles/1_0.gcn", "rb").read())[1]
+    a = ct.decode(open(tmp_path / "tiles/0_0.gcn", "rb").read())[1]
+    b = ct.decode(open(tmp_path / "tiles/1_0.gcn", "rb").read())[1]
     assert (a[:, -1] == b[:, 0]).all()
 
 
