@@ -21,6 +21,10 @@ python src/build_site.py --name open-land-01 --e 400000 --n 210000 --size 2048
 python src/pair_gpu.py --tiles E:/lidar-out/open-land-01
 ```
 
+## Scripts added on the GPU lane
+
+- `src/piles_sweep.py`: solar table pile reveal on real ground, direct source against decoded tiles on the GPU.
+
 ## Tile format `.ght`
 
 Little-endian. 32-byte header: magic `GGH1`, u16 version (1), u16 samples (257), u16 spacing in mm, u16 flags,
