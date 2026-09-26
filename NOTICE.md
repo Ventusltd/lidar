@@ -2,10 +2,8 @@
 
 Copyright 2026 Ventus Ltd. Project: GlobalGrid2050.
 
-**Code.** This covers `lidar/src/*.py` and `lidar/tests/*.py`. **The repository has no LICENSE file yet.**
-Until one is added, the code is "all rights reserved" by default, even though the repository is public.
-The sister repositories use MIT (graphics-engines-open-source-world) and Apache-2.0 (GridAtlas). Add
-one of those before anyone is invited to reuse the code.
+**Code.** `lidar/src/*.py` and `lidar/tests/*.py` are licensed under the Apache License 2.0 (`LICENSE`).
+Data is not covered by that licence (`DATA-LICENCE.md`).
 
 **Data this pipeline reads and writes keeps its own terms.** A code licence does not cover it.
 
@@ -66,6 +64,15 @@ one of those before anyone is invited to reuse the code.
   83-91; simplification by Douglas, D.H. and Peucker, T.K. (1973) "Algorithms for the reduction of the number of
   points required to represent a digitized line or its caricature", *The Canadian Cartographer* 10(2), 112-122
   (`contour_pair.py`, `contour_tiles.py`).
+- Flow (`flow_tiles.py`, `flow_route.py`): depression fill by Planchon, O. and Darboux, F. (2002) "A fast, simple
+  and versatile algorithm to fill the depressions of digital elevation models", *Catena* 46(2-3), 159-176, witnessed
+  by Barnes, R., Lehman, C. and Mulla, D. (2014) "Priority-flood: an optimal depression-filling and watershed-labeling
+  algorithm for digital elevation models", *Computers & Geosciences* 62, 117-127; D8 after O'Callaghan, J.F. and
+  Mark, D.M. (1984) "The extraction of drainage networks from digital elevation data", *Computer Vision, Graphics,
+  and Image Processing* 28(3), 323-344; D-infinity by Tarboton, D.G. (1997) "A new method for the determination of
+  flow directions and upslope areas in grid digital elevation models", *Water Resources Research* 33(2), 309-319;
+  accumulation by topological peeling after Kahn, A.B. (1962) "Topological sorting of large networks",
+  *Communications of the ACM* 5(11), 558-562. Output `.gfl` tiles and `flow-tiles.json` derive from the EA DTM (OGL).
 - Georeferencing and grid: Ordnance Survey, *A Guide to Coordinate Systems in Great Britain* v3.6
   (2020), cited as method.
 
@@ -76,6 +83,7 @@ one of those before anyone is invited to reuse the code.
 | tifffile | BSD-3-Clause | 2008-2026 Christoph Gohlke |
 | imagecodecs | BSD-3-Clause | 2008-2026 Christoph Gohlke |
 | CuPy (optional GPU pair) | MIT | 2015 Preferred Infrastructure, Inc.; Preferred Networks, Inc. |
+| pytest (tests only, `test_copernicus.py`) | MIT | 2004 Holger Krekel and others |
 
 If any of these is vendored or bundled, copy its LICENSE file next to it.
 

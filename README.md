@@ -47,6 +47,8 @@ python src/canopy_tiles.py --site E:/lidar-out/open-land-01   # after fetch_box(
 - `src/copernicus.py`: Copernicus GLO-30 fallback outside EA coverage, byte-range COG fetch, 32 m `.ght` tiles on BNG.
 - `src/copernicus_pair.py`: GPU pair of the Copernicus tiles against the EA DTM averaged over 33 m blocks.
 - `src/osgb.py`: WGS84 to British National Grid (OS Transverse Mercator + 7-parameter Helmert, about 3.5 m).
+- `src/flow_tiles.py`: where water goes and sits: depression fill, D8 against D-infinity routing on the GPU, `.gfl` tiles.
+- `src/flow_route.py`: flow routing core (CUDA kernels and the CPU priority-flood witness) used by `flow_tiles.py`.
 
 ## Outside EA coverage: Copernicus DEM GLO-30
 
