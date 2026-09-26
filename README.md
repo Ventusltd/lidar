@@ -27,6 +27,13 @@ Free UK LiDAR turned into small, checked 3D terrain tiles for a lightweight brow
    cells classed as vegetation or structure by two independent methods on the GPU (returns: first minus last;
    shape: roughness about a plane), a CPU witness, hedgerow lines by opening and thinning. Only cells both methods
    call vegetation are published with a height; structures and disagreements are hidden, never drawn.
+9. **Sun**: `src/sun_data.py` fetches a PVGIS typical year (SARAH-3 satellite radiation, cloud included) once per
+   site centre and writes `sun/sun-climate.json` (monthly totals, profiles, licence) and `sun/tmy-hourly.bin`;
+   it also samples the Met Office HadUK-Grid 1 km 1991-2020 sunshine (bilinear, British National Grid) into
+   `haduk_grid` with the PVGIS/HadUK ratio; pages use HadUK for sunshine hours and PVGIS for irradiance;
+   `src/sun_cells.py` (sun positions in `src/sun_geom.py`) applies the horizon tiles to every 4 m cell on the GPU for monthly beam hours, sunshine hours
+   and direct irradiation, clear sky and cloud-weighted (`.gsc` tiles, hourly sun path paired with a sub-hourly
+   sky-map integral, CPU witness).
 
 ```
 python src/build_site.py --name open-land-01 --e 400000 --n 210000 --size 2048
@@ -36,11 +43,13 @@ python src/canopy_tiles.py --site $LIDAR_OUT/open-land-01   # after fetch_box(pr
 
 ## Local folders
 
-Nothing is written into the repository's tracked files. Two environment variables set where data goes; each
+Nothing is written into the repository's tracked files. Three environment variables set where data goes; each
 script also takes the folder on the command line (`--tiles`, `--site`, `--cache`, `--out`):
 
 - `LIDAR_CACHE`: raw GeoTIFF and Copernicus byte-range cache. Default `.local/lidar-cache`.
 - `LIDAR_OUT`: built site folders (`<LIDAR_OUT>/<name>/tiles.json` and tiles). Default `.local/lidar-out`.
+- `WORLD_CACHE`: downloads shared across sites (PVGIS responses and the HadUK-Grid netCDF under
+  `<WORLD_CACHE>/sun/`, Sentinel-2 scenes). Default `.local/world-cache`.
 
 Point them at your own data drive, for example `export LIDAR_CACHE=/data/lidar-cache LIDAR_OUT=/data/lidar-out`
 (or `setx` on Windows). `.local/` is git-ignored. The examples use `python` for any interpreter with NumPy and
