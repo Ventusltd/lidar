@@ -14,7 +14,8 @@ Free UK LiDAR turned into small, checked 3D terrain tiles for a lightweight brow
    height against the source, heights between samples two ways, and shared tile edges. Disagreements are
    counted, never suppressed, and written to a seeded receipt.
 5. **Derive** slope and aspect tiles (`src/slope_tiles.py`) and earthworks volumes for trenches and platforms
-   (`src/earthworks_pair.py`), each checked the same way.
+   (`src/earthworks_pair.py`), and terrain horizon tiles (`src/horizon_tiles.py`: the horizon angle in 32 azimuths
+   for every 4 m cell, for terrain shadow at any sun position), each checked the same way.
 
 ```
 python src/build_site.py --name open-land-01 --e 400000 --n 210000 --size 2048
