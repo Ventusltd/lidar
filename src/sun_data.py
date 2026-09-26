@@ -8,10 +8,16 @@ Source (checked 26 Sept 2026, see NOTICE.md):
   sequentially, with a named User-Agent, and cache the answer under E:/world-cache/sun/).
   Usage conditions: "The information provided by PVGIS is free and there are no restrictions on its use."
 
-Not used (recorded in NOTICE.md): HadUK-Grid monthly sunshine (OGL v3.0, but the CEDA archive requires a
-registered login to download), Met Office Weather DataHub (forecasts and 48 h observations only, API key, own
-licence), Met Office UKV on the AWS Open Data registry (forecast model output, rolling two years, CC BY-SA).
-Sunshine hours are therefore derived from the TMY by the WMO definition: direct normal irradiance of at least
+Also used (checked 26 Sept 2026, see NOTICE.md): Met Office HadUK-Grid v1.3.2.ceda, 1 km monthly 1991-2020
+sunshine averages (station observations gridded by the Met Office), doi:10.5285/789b3065d74a4c948ab05d33556c86d0,
+Open Government Licence v3.0. The owner downloads the file from CEDA (registered login) into
+E:/world-cache/sun/haduk/; it is sampled bilinearly from the four nearest 1 km cell centres on British National Grid
+(the file's own transverse_mercator grid mapping is checked against EPSG:27700). The web layer prefers HadUK-Grid for
+sunshine hours and PVGIS for irradiance; the PVGIS/HadUK ratio is recorded per month.
+
+Not used: Met Office Weather DataHub (forecasts and 48 h observations only, API key, own licence), Met Office UKV on
+the AWS Open Data registry (forecast model output, rolling two years, CC BY-SA).
+PVGIS sunshine hours are derived from the TMY by the WMO definition: direct normal irradiance of at least
 120 W/m2 (WMO Guide to Instruments and Methods of Observation, WMO-No. 8, Vol. I, ch. 8).
 
 Output per site (the page makes no live call; it reads these):
@@ -44,6 +50,129 @@ LICENCE = dict(
     checked="2026-09-26")
 ATTRIBUTION = ("Solar radiation: PVGIS 5.3 typical meteorological year, PVGIS-SARAH3 satellite radiation and ERA5 "
                "meteorology, European Commission Joint Research Centre. Not endorsed by the European Commission.")
+
+
+HADUK_FILE = "E:/world-cache/sun/haduk/sun_hadukgrid_uk_1km_mon-30y_199101-202012.nc"
+HADUK_BNG = dict(semi_major_axis=6377563.396, semi_minor_axis=6356256.909, longitude_of_central_meridian=-2.0,
+                 latitude_of_projection_origin=49.0, false_easting=400000.0, false_northing=-100000.0,
+                 scale_factor_at_central_meridian=0.9996012717)     # OSGB36 / British National Grid, EPSG:27700
+HADUK_SOURCE = dict(
+    dataset="HadUK-Grid Gridded Climate Observations on a 1km grid over the UK, v1.3.2.ceda (1836-2025)",
+    product="monthly sunshine, 30-year average 1991-2020 (mon-30y), 1 km",
+    kind="station-based observations (Met Office sunshine recorders) gridded by the Met Office; not satellite, not a model",
+    doi="10.5285/789b3065d74a4c948ab05d33556c86d0",
+    catalogue="https://catalogue.ceda.ac.uk/uuid/789b3065d74a4c948ab05d33556c86d0/",
+    citation=("Met Office; Hollis, D.; Carlisle, E.; Kendon, M.; Packman, S.; Doherty, A. (2026): HadUK-Grid Gridded "
+              "Climate Observations on a 1km grid over the UK, v1.3.2.ceda (1836-2025). NERC EDS Centre for "
+              "Environmental Data Analysis, 23 June 2026. doi:10.5285/789b3065d74a4c948ab05d33556c86d0."),
+    method_reference=("Hollis, D, McCarthy, M, Kendon, M, Legg, T and Simpson, I (2019), HadUK-Grid - A new UK dataset "
+                      "of gridded climate observations, Geosci. Data J., 6(2), 151-159. doi:10.1002/gdj3.78"))
+HADUK_LICENCE = dict(
+    name="Open Government Licence v3.0",
+    url="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    text=("CEDA record: access \"available to any registered CEDA user\", licence \"Open Government Licence\"; "
+          "\"When using these data you must cite them correctly using the citation given on the CEDA Data Catalogue "
+          "record.\" Met Office HadUK-Grid page: \"The HadUK-Grid datasets are freely available for use under Open "
+          "Government Licence\" and users should \"acknowledge the source if the data are used in any report or "
+          "product.\""),
+    checked_urls=["https://catalogue.ceda.ac.uk/uuid/789b3065d74a4c948ab05d33556c86d0/",
+                  "https://www.metoffice.gov.uk/hadobs/hadukgrid/",
+                  "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"],
+    checked="2026-09-26")
+HADUK_ATTRIBUTION = ("Sunshine hours: Met Office HadUK-Grid v1.3.2.ceda, 1 km monthly averages 1991-2020, station "
+                     "observations gridded by the Met Office (doi:10.5285/789b3065d74a4c948ab05d33556c86d0). Contains "
+                     "public sector information licensed under the Open Government Licence v3.0.")
+PREFERRED = dict(sunshine_hours="haduk_grid", irradiance="pvgis",
+                 note=("web layer: show HadUK-Grid (station observations) for sunshine hours and PVGIS (satellite) for "
+                       "every irradiance quantity; fall back to PVGIS sunshine hours only when haduk_grid is null"))
+
+
+class HadUK:
+    """The HadUK-Grid monthly 30-year sunshine file, opened once, read a 2 x 2 window per site."""
+
+    def __init__(self, path=HADUK_FILE):
+        import netCDF4
+        self.path = path
+        self.ds = netCDF4.Dataset(path)
+        try:
+            self._check()
+        except Exception:
+            self.ds.close()
+            raise
+        with open(path, "rb") as f:
+            self.sha256 = hashlib.sha256(f.read()).hexdigest()
+
+    def _check(self):
+        v = self.ds["sun"]
+        if v.getncattr("units") != "hour" or v.dimensions != ("time", "projection_y_coordinate", "projection_x_coordinate"):
+            raise ValueError("unexpected HadUK sun variable")
+        gm = self.ds[v.getncattr("grid_mapping")]
+        if gm.getncattr("grid_mapping_name") != "transverse_mercator":
+            raise ValueError("HadUK grid is not transverse mercator")
+        for k, want in HADUK_BNG.items():
+            if abs(float(gm.getncattr(k)) - want) > 1e-6 * max(1.0, abs(want)):
+                raise ValueError(f"HadUK grid is not British National Grid: {k}={gm.getncattr(k)}")
+        if [int(m) for m in self.ds["month_number"][:]] != list(range(1, 13)):
+            raise ValueError("HadUK months are not Jan..Dec")
+        self.x = np.asarray(self.ds["projection_x_coordinate"][:], float)
+        self.y = np.asarray(self.ds["projection_y_coordinate"][:], float)
+        for a in (self.x, self.y):
+            if not np.allclose(np.diff(a), 1000.0):
+                raise ValueError("HadUK grid is not a regular 1 km grid")
+        self.attrs = {k: str(self.ds.getncattr(k)) for k in self.ds.ncattrs()}
+
+    def close(self):
+        self.ds.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+    def window(self, i0, j0):
+        a = self.ds["sun"][:, i0:i0 + 2, j0:j0 + 2]
+        return np.ma.filled(np.ma.asarray(a, float), np.nan)
+
+
+def bilinear_sample(x, y, window_fn, e, n):
+    """Bilinear from the four nearest cell centres. x, y ascending centre coordinates; window_fn(i0, j0) -> (12, 2, 2).
+    Cells with no data are dropped and the remaining weights renormalised (recorded). Returns (12 values, record)."""
+    j0 = int(np.searchsorted(x, e, side="right")) - 1
+    i0 = int(np.searchsorted(y, n, side="right")) - 1
+    if not (0 <= j0 < len(x) - 1 and 0 <= i0 < len(y) - 1):
+        raise ValueError(f"({e}, {n}) is outside the HadUK grid")
+    tx = (e - x[j0]) / (x[j0 + 1] - x[j0]); ty = (n - y[i0]) / (y[i0 + 1] - y[i0])
+    w = np.array([[(1 - ty) * (1 - tx), (1 - ty) * tx], [ty * (1 - tx), ty * tx]])
+    win = window_fn(i0, j0)
+    ok = np.all(np.isfinite(win), axis=0)
+    if not ok.any():
+        raise ValueError(f"no HadUK data in the four cells around ({e}, {n})")
+    wv = np.where(ok, w, 0.0); wv = wv / wv.sum()
+    vals = np.einsum("mij,ij->m", np.where(ok[None], win, 0.0), wv)
+    cells = [dict(e=float(x[j0 + dj]), n=float(y[i0 + di]), weight=round(float(wv[di, dj]), 6), valid=bool(ok[di, dj]),
+                  sunshine_hours=[round(float(v), 2) for v in win[:, di, dj]] if ok[di, dj] else None)
+             for di in (0, 1) for dj in (0, 1)]
+    return vals, dict(method="bilinear from the 4 nearest 1 km cell centres (British National Grid, EPSG:27700)",
+                      renormalised=not bool(ok.all()), cells=cells)
+
+
+def haduk_block(h, e, n, pvgis_monthly):
+    vals, rec = bilinear_sample(h.x, h.y, h.window, e, n)
+    pv = pvgis_monthly["sunshine_hours"]
+    return dict(
+        label="Sunshine hours: station-based observations gridded by the Met Office (HadUK-Grid)",
+        source=dict(HADUK_SOURCE, version=h.attrs.get("source"), file_version=h.attrs.get("version"),
+                    period=h.attrs.get("lta_period"), cache_file=os.path.basename(h.path), cache_sha256=h.sha256),
+        licence=HADUK_LICENCE, attribution=HADUK_ATTRIBUTION,
+        sampling=rec, unit="hours per month (mean over 1991-2020)",
+        monthly_sunshine_hours=[round(float(v), 1) for v in vals], annual_sunshine_hours=round(float(vals.sum()), 1),
+        compare_pvgis=dict(
+            note=("PVGIS sunshine hours are counted from one typical year (SARAH-3, hours with Gb(n) >= 120 W/m2); "
+                  "ratio = PVGIS / HadUK-Grid; PVGIS was expected to read higher"),
+            pvgis_monthly_sunshine_hours=pv,
+            ratio_monthly=[round(p / float(hv), 3) if hv > 0 else None for p, hv in zip(pv, vals)],
+            ratio_annual=round(sum(pv) / float(vals.sum()), 3)))
 
 
 def bng_to_wgs84(e, n):
@@ -143,7 +272,7 @@ def decode_tmy(blob):
     return np.frombuffer(blob, "<u2", offset=TMY_HEADER_BYTES).reshape(n, nf).astype(np.float64), off / 10000.0
 
 
-def build(site_dir, centre_e, centre_n, d, cache_file):
+def build(site_dir, centre_e, centre_n, d, cache_file, haduk=None):
     vals, month, hour, off, meta = parse_tmy(d)
     monthly, prof = summarise(vals, month, hour)
     out = os.path.join(site_dir, "sun"); os.makedirs(out, exist_ok=True)
@@ -169,9 +298,10 @@ def build(site_dir, centre_e, centre_n, d, cache_file):
         hourly=dict(file="tmy-hourly.bin", fields=list(FIELDS), unit="W/m2", dtype="u16 little-endian",
                     header_bytes=TMY_HEADER_BYTES, hours=HOURS, sha256=hashlib.sha256(blob).hexdigest(),
                     bytes=len(blob)),
-        not_used=dict(haduk_grid_sunshine="OGL v3.0 but CEDA download needs a registered login; not fetched",
-                      met_office_datahub="forecasts and 48 h observations only, API key, not climate",
+        not_used=dict(met_office_datahub="forecasts and 48 h observations only, API key, not climate",
                       met_office_aws_ukv="forecast model output, rolling 2 years, CC BY-SA; not a climate"),
+        preferred=PREFERRED,
+        haduk_grid=haduk_block(haduk, centre_e, centre_n, monthly) if haduk is not None else None,
         generated_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
     path = os.path.join(out, "sun-climate.json")
     with open(path, "w", encoding="utf-8", newline="\n") as f:
@@ -184,7 +314,11 @@ def main(argv=None):
     ap.add_argument("--site", help="one site folder (default: every site in the sites index)")
     ap.add_argument("--index", default=SITES_INDEX)
     ap.add_argument("--cache", default=CACHE)
+    ap.add_argument("--haduk", default=HADUK_FILE, help="HadUK-Grid monthly 30-year sunshine netCDF ('' to skip)")
     a = ap.parse_args(argv)
+    haduk = HadUK(a.haduk) if a.haduk and os.path.exists(a.haduk) else None
+    if haduk is None:
+        print(f"HadUK-Grid file not found ({a.haduk!r}); writing PVGIS only")
     sites = json.load(open(a.index))["sites"]
     root = os.path.dirname(a.index)
     if a.site:
@@ -196,11 +330,17 @@ def main(argv=None):
         site_dir = a.site or os.path.join(root, s["name"])
         lat, lon = bng_to_wgs84(s["centre_e"], s["centre_n"])
         d, cf, fresh = fetch_tmy(round(lat, 4), round(lon, 4), a.cache)
-        doc, path = build(site_dir, s["centre_e"], s["centre_n"], d, cf)
+        doc, path = build(site_dir, s["centre_e"], s["centre_n"], d, cf, haduk)
         m = doc["monthly"]["annual"]
         print(f"{s['name']}: {'fetched' if fresh else 'cached'} lat {doc['latitude']} lon {doc['longitude']} "
               f"GHI {m['ghi_kwh_m2']} kWh/m2, DNI {m['dni_kwh_m2']} kWh/m2, sunshine {m['sunshine_hours']} h, "
               f"{os.path.getsize(path)} + {doc['hourly']['bytes']} bytes")
+        if doc["haduk_grid"]:
+            c = doc["haduk_grid"]["compare_pvgis"]
+            print(f"  HadUK-Grid sunshine {doc['haduk_grid']['annual_sunshine_hours']} h/yr, PVGIS/HadUK "
+                  f"{c['ratio_annual']}, monthly {c['ratio_monthly']}")
+    if haduk is not None:
+        haduk.close()
     return 0
 
 

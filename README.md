@@ -18,6 +18,8 @@ Free UK LiDAR turned into small, checked 3D terrain tiles for a lightweight brow
    for every 4 m cell, for terrain shadow at any sun position), each checked the same way.
 6. **Sun**: `src/sun_data.py` fetches a PVGIS typical year (SARAH-3 satellite radiation, cloud included) once per
    site centre and writes `sun/sun-climate.json` (monthly totals, profiles, licence) and `sun/tmy-hourly.bin`;
+   it also samples the Met Office HadUK-Grid 1 km 1991-2020 sunshine (bilinear, British National Grid) into
+   `haduk_grid` with the PVGIS/HadUK ratio; pages use HadUK for sunshine hours and PVGIS for irradiance;
    `src/sun_cells.py` applies the horizon tiles to every 4 m cell on the GPU for monthly beam hours, sunshine hours
    and direct irradiation, clear sky and cloud-weighted (`.gsc` tiles, hourly sun path paired with a sub-hourly
    sky-map integral, CPU witness).

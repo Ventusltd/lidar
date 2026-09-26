@@ -21,6 +21,12 @@ whose usage conditions say "The information provided by PVGIS is free and there 
 Credit it as: Solar radiation: PVGIS 5.3 typical meteorological year, PVGIS-SARAH3 satellite radiation and ERA5
 meteorology, European Commission Joint Research Centre. Not endorsed by the European Commission.
 
+`sun/sun-climate.json` also carries `haduk_grid`: monthly sunshine hours sampled from the Met Office HadUK-Grid
+v1.3.2.ceda 1 km 1991-2020 averages (station observations gridded by the Met Office), Open Government Licence v3.0,
+doi:10.5285/789b3065d74a4c948ab05d33556c86d0. Credit it as: Sunshine hours: Met Office HadUK-Grid v1.3.2.ceda, 1 km
+monthly averages 1991-2020, station observations gridded by the Met Office (doi:10.5285/789b3065d74a4c948ab05d33556c86d0).
+Contains public sector information licensed under the Open Government Licence v3.0.
+
 `sun/cells/*.gsc` and `sun-cells.json` combine that climate with the EA LiDAR horizon, so they are published under
 OGL v3.0 and carry both the PVGIS credit and the Environment Agency line above.
 
