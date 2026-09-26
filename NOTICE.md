@@ -39,6 +39,10 @@ one of those before anyone is invited to reuse the code.
   14-47.
 - Cross-check: Zevenbergen, L.W. and Thorne, C.R. (1987) "Quantitative analysis of land surface
   topography", *Earth Surface Processes and Landforms* 12(1), 47-56.
+- Viewshed: Franklin, W.R. and Ray, C.K. (1994) "Higher isn't necessarily better: visibility algorithms and
+  experiments", *Proc. 6th International Symposium on Spatial Data Handling*, Edinburgh, 751-770 (`viewshed.py`).
+- Earth radius: Moritz, H. (2000) "Geodetic Reference System 1980", *Journal of Geodesy* 74, 128-133; refraction
+  coefficient k = 0.13: Torge, W. and Mueller, J. (2012) *Geodesy*, 4th edn, de Gruyter, section 5.1.
 - Georeferencing and grid: Ordnance Survey, *A Guide to Coordinate Systems in Great Britain* v3.6
   (2020), cited as method.
 
