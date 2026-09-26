@@ -5,7 +5,7 @@ tiles.json exactly (it was stored as mojibake after pair_gpu.py re-read the file
 page); slope-tiles.json and visibility-tiles.json must carry the licence and attribution; the visibility
 index must say that hedges, trees and buildings are not included.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe tests/test_notices.py
+    python tests/test_notices.py
 """
 import inspect, json, os, pathlib, sys, tempfile, traceback
 import numpy as np

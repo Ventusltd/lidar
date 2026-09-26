@@ -27,7 +27,7 @@ Ground is the bilinear surface of the float64 source (source.npy, SW origin in s
 Seeded (default_rng), bounded (--routes or --seconds, whichever first). Witness: the first
 routes recomputed in NumPy on the CPU, agreeing with the card within 1e-9.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe src/cable_sweep.py --tiles DIR
+    python src/cable_sweep.py --tiles DIR
       [--routes 40000] [--seconds 60] [--seed N] [--cpu] [--cables PATH]
 """
 import argparse, hashlib, json, math, os, sys, time

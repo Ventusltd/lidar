@@ -1,7 +1,7 @@
 """Copernicus GLO-30 tiles against the EA 1 m DTM: the real difference, surface minus bare earth.
 
-  E:/swarm/gpu-bench/venv/Scripts/python.exe src/copernicus_pair.py \
-      --ea E:/lidar-out/open-land-01 --cop E:/lidar-out/open-land-01-copernicus
+  python src/copernicus_pair.py \
+      --ea $LIDAR_OUT/open-land-01 --cop $LIDAR_OUT/open-land-01-copernicus
 
 Two checks, each a GPU pair with a CPU witness. Disagreements are counted, never suppressed.
 

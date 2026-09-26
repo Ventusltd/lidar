@@ -27,7 +27,7 @@ The receipt (pair_receipt.json) lands next to tiles.json with the seed, counts, 
 16 check points (x, y, h) the browser can re-test, the script sha256 and the device name. If
 tiles.json exists, the receipt's sha256 is written into it under "receipt".
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe src/pair_gpu.py --tiles DIR [--source NPY]
+    python src/pair_gpu.py --tiles DIR [--source NPY]
     ... --tiles DIR --synth        write a synthetic hilly source and its tiles first (dev only)
 """
 import argparse, glob, hashlib, json, math, os, struct, sys, time

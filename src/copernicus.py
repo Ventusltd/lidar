@@ -19,7 +19,7 @@ What this does:
   1. Converts the BNG box to a latitude/longitude box and lists the 1-degree tiles it touches.
   2. For each tile, fetches the TIFF header by HTTP byte range, works out which 1024 x 1024
      internal blocks the box needs, and fetches only those, each by one byte range. Every range
-     is cached under E:\\lidar-cache\\copernicus\\<tile>\\ and never fetched twice.
+     is cached under $LIDAR_CACHE/copernicus/<tile>/ and never fetched twice.
   3. Places the blocks in one regular lat/lon mosaic (tiles in one longitude band share one
      lattice; a box that crosses a band edge at 50, 60 or 70 degrees is refused, not guessed).
   4. Reprojects to BNG by resampling: for every BNG node, the node's WGS84 position (osgb.py:
@@ -50,8 +50,8 @@ from geotiff_read import mask_nodata  # noqa: E402
 import osgb  # noqa: E402
 
 BUCKET = "https://copernicus-dem-30m.s3.amazonaws.com/"
-CACHE_ROOT = r"E:\lidar-cache\copernicus"
-OUT_ROOT = r"E:\lidar-out"
+CACHE_ROOT = os.path.join(os.environ.get("LIDAR_CACHE", os.path.join(".local", "lidar-cache")), "copernicus")
+OUT_ROOT = os.environ.get("LIDAR_OUT", os.path.join(".local", "lidar-out"))
 USER_AGENT = "lidar-tiles/1 (copernicus glo-30; polite sequential fetch)"
 HEAD_BYTES = 65536
 MIN_SPACING_M = 30

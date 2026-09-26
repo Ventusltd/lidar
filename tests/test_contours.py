@@ -5,7 +5,7 @@ radius; a saddle (z = x y) exercises the ambiguous cells, where both channels an
 same choice; no-data holes are skipped by every channel; the simplifier keeps its promise; tiles, index and
 receipt are LF and carry true hashes.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe tests/test_contours.py
+    python tests/test_contours.py
 """
 import hashlib, inspect, json, os, sys, tempfile, traceback
 import numpy as np

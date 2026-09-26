@@ -42,7 +42,7 @@ does a few seconds of work, and nothing loops without a convergence check.
    Rows SOUTH to NORTH, each WEST to EAST. Tiles sit on the .ght grid (256 m, shared edges),
    indexed in flow-tiles.json with sha256s; the receipt lands beside it as flow_receipt.json.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe src/flow_tiles.py --site E:/lidar-out/open-land-01
+    python src/flow_tiles.py --site $LIDAR_OUT/open-land-01
 """
 import argparse, hashlib, json, math, os, sys, time
 from datetime import datetime, timezone

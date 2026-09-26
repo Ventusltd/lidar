@@ -5,7 +5,7 @@ Flat ground: every reveal nominal. A plane inside the along-row limit: the table
 limit: slope held at the limit, spread = excess slope x span, centred on the window. The tile channel reads
 the same ground as the source to within the 1 cm rounding of the .ght format, and on NumPy and CuPy alike.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe tests/test_piles_sweep.py
+    python tests/test_piles_sweep.py
 """
 import inspect, json, os, pathlib, sys, tempfile, traceback
 import numpy as np

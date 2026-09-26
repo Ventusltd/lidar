@@ -23,7 +23,7 @@ suppressed; the worst rows are kept with their places. Witness: the first rows r
 Reveal range, slope limits, embedment and grading width are ASSUMED typical figures (see LIMITS, REVEAL); the
 sources for the slope figures are listed in piles.mjs.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe src/piles_sweep.py --tiles DIR
+    python src/piles_sweep.py --tiles DIR
       [--rows 20000] [--seconds 60] [--seed N] [--cpu] [--fixture PATH]
 """
 import argparse, hashlib, json, math, os, sys, time

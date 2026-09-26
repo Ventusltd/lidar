@@ -32,7 +32,7 @@ analysis spacing (default 2 m, every second node): hedges, trees and buildings a
    24 u32 visible_count | 28 u32 nodata_count | 32 u8[samples*samples]: 0 hidden from every observer,
       1..254 number of observers who see it (254 = 254 or more), 255 no data; rows SOUTH to NORTH.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe src/viewshed.py --site E:/lidar-out/open-land-01
+    python src/viewshed.py --site $LIDAR_OUT/open-land-01
 """
 import argparse, hashlib, json, os, struct, sys, time
 from datetime import datetime, timezone

@@ -4,7 +4,7 @@ A tilted plane has a known horizon in every azimuth (atan of the slope along it)
 distance has a known horizon towards it; the witness must agree with the GPU; the .ghz tiles and
 their index must say what the maths says.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe tests/test_horizon.py
+    python tests/test_horizon.py
 """
 import hashlib, inspect, json, os, pathlib, sys, tempfile, traceback
 import numpy as np

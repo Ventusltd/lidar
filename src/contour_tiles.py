@@ -19,7 +19,7 @@ Tile file (ggc1 JSON, LF): {"format": "ggc1", "e0", "n0", "tile_m": 256, "unit_m
   "levels": [{"z": metres, "lines": [[x0, y0, x1, y1, ...], ...]}, ...]}   x, y integer centimetres.
 Index contour-tiles.json lists every tile with its sha256; the receipt contour_receipt.json sits beside it.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe src/contour_tiles.py --site E:/lidar-out/open-land-01
+    python src/contour_tiles.py --site $LIDAR_OUT/open-land-01
 """
 import argparse, hashlib, json, os, sys, time
 from datetime import datetime, timezone

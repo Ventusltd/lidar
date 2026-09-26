@@ -4,7 +4,7 @@ One flat-roofed building, one tree, one 50 m hedge, one rough object the pulses 
 on a gently sloping field. The building must be structure and never shown, the tree tree, the hedge a
 hedge with one traced run at its real height, the rough solid uncertain; the witness must agree.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe lidar/tests/test_canopy.py
+    python lidar/tests/test_canopy.py
 """
 import hashlib, inspect, json, os, pathlib, sys, tempfile, traceback
 import numpy as np

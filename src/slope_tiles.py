@@ -27,7 +27,7 @@ azimuth = atan2(-p, -q) clockwise from grid north, as an octant 0..7 = N NE E SE
 Tiles sit on the .ght grid (256 m, edges shared with neighbours) and are indexed in
 slope-tiles.json with sha256s; the pair receipt lands beside it as slope_receipt.json.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe src/slope_tiles.py --site E:/lidar-out/open-land-01
+    python src/slope_tiles.py --site $LIDAR_OUT/open-land-01
 """
 import argparse, hashlib, json, os, struct, sys, time
 from datetime import datetime, timezone

@@ -5,7 +5,7 @@ a wall must cast the shadow its geometry says; flat ground on a curved Earth mus
 horizon distance sqrt(eye / c) and a target beyond sqrt(eye / c) + sqrt(target / c); rough ground must make
 photons, mostly on visibility edges; the GPU and CPU must agree to the bit; tiles must round-trip.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe lidar/tests/test_viewshed.py
+    python lidar/tests/test_viewshed.py
 """
 import hashlib, inspect, json, os, pathlib, sys, tempfile, traceback
 import numpy as np

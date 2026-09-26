@@ -23,7 +23,7 @@ Ground is the bilinear surface of the float64 source (source.npy, SW origin in s
 Seeded (default_rng), bounded (--trenches or --seconds, whichever first). Witness: the first
 trenches and the platform recomputed in NumPy on the CPU, agreeing with the card within 1e-9.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe src/earthworks_pair.py --tiles DIR
+    python src/earthworks_pair.py --tiles DIR
       [--trenches 4000] [--seconds 20] [--seed N] [--cpu]
 """
 import argparse, hashlib, json, math, os, sys, time

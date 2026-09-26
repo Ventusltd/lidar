@@ -30,7 +30,7 @@ Hedge versus tree comes from canopy_lines.hedgerows (opening, thinning, tracing)
    Rows SOUTH to NORTH, each WEST to EAST. Tiles sit on the .ght grid; canopy-tiles.json indexes them
    (sha256 each) and names hedges.json (polylines, BNG metres); canopy_receipt.json holds the pair.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe src/canopy_tiles.py --site E:/lidar-out/open-land-01
+    python src/canopy_tiles.py --site $LIDAR_OUT/open-land-01
 """
 import argparse, glob, hashlib, json, os, struct, sys, time
 from datetime import datetime, timezone
@@ -306,7 +306,7 @@ def write_tiles(out_dir, cls, hq, lines, oe, on, site_name, spacing_mm=1000):
 def load_surface(site, product, oe, on, rows, cols, cache=None):
     """Mosaic a cached DSM product onto the site grid (never fetches; fetch_wcs.fetch_box does)."""
     from geotiff_read import mosaic
-    cache = cache or os.path.join(r"E:\lidar-cache", os.path.basename(os.path.normpath(site)))
+    cache = cache or os.path.join(os.environ.get("LIDAR_CACHE", os.path.join(".local", "lidar-cache")), os.path.basename(os.path.normpath(site)))
     paths = sorted(glob.glob(os.path.join(cache, f"{product}_*.tif")))
     if not paths:
         raise SystemExit(f"no {product} GeoTIFFs in {cache}: fetch them with fetch_wcs.fetch_box(product=...)")
@@ -316,7 +316,7 @@ def load_surface(site, product, oe, on, rows, cols, cache=None):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--site", required=True, help="folder with source.npy (DTM) and source.json")
-    ap.add_argument("--cache", help=r"raw GeoTIFF cache, default E:\lidar-cache\<site name>")
+    ap.add_argument("--cache", help="raw GeoTIFF cache, default $LIDAR_CACHE/<site name> (LIDAR_CACHE defaults to .local/lidar-cache)")
     ap.add_argument("--out", help="default SITE/canopy")
     ap.add_argument("--cpu", action="store_true")
     a = ap.parse_args(argv)

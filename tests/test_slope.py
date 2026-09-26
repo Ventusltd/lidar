@@ -4,7 +4,7 @@ A plane must annihilate (Horn and Zevenbergen-Thorne agree exactly, zero photons
 (break of slope) must make photons on the crease and nowhere else; classes, aspect octants and
 the .gst tiles must say what the maths says.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe lidar/tests/test_slope.py
+    python lidar/tests/test_slope.py
 """
 import hashlib, inspect, json, os, pathlib, sys, tempfile, traceback
 import numpy as np

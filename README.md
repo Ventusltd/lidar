@@ -30,9 +30,21 @@ Free UK LiDAR turned into small, checked 3D terrain tiles for a lightweight brow
 
 ```
 python src/build_site.py --name open-land-01 --e 400000 --n 210000 --size 2048
-python src/pair_gpu.py --tiles E:/lidar-out/open-land-01
-python src/canopy_tiles.py --site E:/lidar-out/open-land-01   # after fetch_box(product="fzdsm1m"/"lzdsm1m")
+python src/pair_gpu.py --tiles $LIDAR_OUT/open-land-01
+python src/canopy_tiles.py --site $LIDAR_OUT/open-land-01   # after fetch_box(product="fzdsm1m"/"lzdsm1m")
 ```
+
+## Local folders
+
+Nothing is written into the repository's tracked files. Two environment variables set where data goes; each
+script also takes the folder on the command line (`--tiles`, `--site`, `--cache`, `--out`):
+
+- `LIDAR_CACHE`: raw GeoTIFF and Copernicus byte-range cache. Default `.local/lidar-cache`.
+- `LIDAR_OUT`: built site folders (`<LIDAR_OUT>/<name>/tiles.json` and tiles). Default `.local/lidar-out`.
+
+Point them at your own data drive, for example `export LIDAR_CACHE=/data/lidar-cache LIDAR_OUT=/data/lidar-out`
+(or `setx` on Windows). `.local/` is git-ignored. The examples use `python` for any interpreter with NumPy and
+CuPy; the GPU scripts need CuPy.
 
 ## Scripts added on the GPU lane
 
@@ -58,7 +70,7 @@ python src/canopy_tiles.py --site E:/lidar-out/open-land-01   # after fetch_box(
 
 `src/copernicus.py` builds `.ght` tiles from the Copernicus DEM GLO-30 where there is no EA LiDAR. It fetches
 only the 1024 × 1024 blocks a box needs, by HTTP byte range from the public bucket (cached under
-`E:\lidar-cache\copernicus\`), resamples to British National Grid nodes (OS Transverse Mercator + 7-parameter
+`$LIDAR_CACHE/copernicus/`), resamples to British National Grid nodes (OS Transverse Mercator + 7-parameter
 Helmert, about 3.5 m, `src/osgb.py`) by bilinear interpolation, and writes tiles at **32 m** spacing (257 samples,
 8,192 m a tile; never finer than 30 m, because the source holds nothing finer).
 
@@ -67,7 +79,7 @@ vertical accuracy is **< 4 m LE90**. `tiles.json` records all three.
 
 ```
 python src/copernicus.py --name open-land-01 --e 400128 --n 209920 --size 2048
-E:/swarm/gpu-bench/venv/Scripts/python.exe src/copernicus_pair.py --ea E:/lidar-out/open-land-01 --cop E:/lidar-out/open-land-01-copernicus
+python src/copernicus_pair.py --ea $LIDAR_OUT/open-land-01 --cop $LIDAR_OUT/open-land-01-copernicus
 ```
 
 The pair compares the tiles with the EA 1 m DTM averaged over 33 m blocks. On open-land-01 (3,969 nodes):

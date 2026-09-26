@@ -5,7 +5,7 @@ Flat ground: 3D = plan = legs - 2 R tan(theta/2) + R theta a bend. A plane of gr
 straight: L sqrt(1 + g^2). A ridge |x - c| kinked on a grid line: each flank exact. Both channels
 must hit the known length and each other; short legs must shrink the fillet and be counted.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe lidar/tests/test_cable_sweep.py
+    python lidar/tests/test_cable_sweep.py
 """
 import inspect, json, math, os, pathlib, sys, tempfile, traceback
 import numpy as np

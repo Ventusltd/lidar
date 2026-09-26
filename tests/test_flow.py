@@ -5,7 +5,7 @@ pit in a slope must pond to the known spill level with the known volume; a plane
 flow by its angle; the GPU and the CPU witness (heap priority-flood, NumPy, sorted sweep) must say
 the same thing; the .gfl tiles must say what the maths says.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe lidar/tests/test_flow.py
+    python lidar/tests/test_flow.py
 """
 import hashlib, inspect, json, math, os, pathlib, sys, tempfile, time, traceback
 import numpy as np

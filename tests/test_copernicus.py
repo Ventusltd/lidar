@@ -4,7 +4,7 @@ No network: synthetic COGs shaped like the real ones (3600 x 2400 float32, 1024 
 blocks, floating-point predictor, PixelIsPoint, EPSG:4326) are served from memory by a fake
 range fetcher that counts every request.
 
-Run: E:/swarm/gpu-bench/venv/Scripts/python.exe -m pytest tests/test_copernicus.py
+Run: python -m pytest tests/test_copernicus.py
 """
 import io
 import json

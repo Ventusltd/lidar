@@ -4,7 +4,7 @@
 
 The box is centred on (E, N), snapped to a 256 m lattice, and size must be a
 multiple of 256. Tiles share their edge samples, so the fetch covers size+1 m
-per side. Raw GeoTIFFs are cached under E:\\lidar-cache\\<name>\\ and never
+per side. Raw GeoTIFFs are cached under $LIDAR_CACHE/<name>/ (default .local/lidar-cache) and never
 land in the repository.
 
 Sampling note: grid node (E, N) takes the 1 m cell whose SW corner is (E, N),
@@ -23,8 +23,8 @@ from fetch_wcs import fetch_box, WCS_BASE, COVERAGE_ID  # noqa: E402
 from geotiff_read import mosaic  # noqa: E402
 from cut_tiles import cut_grid, load_tiles, TILE_M  # noqa: E402
 
-CACHE_ROOT = r"E:\lidar-cache"
-OUT_ROOT = r"E:\lidar-out"
+CACHE_ROOT = os.environ.get("LIDAR_CACHE", os.path.join(".local", "lidar-cache"))
+OUT_ROOT = os.environ.get("LIDAR_OUT", os.path.join(".local", "lidar-out"))
 
 
 def snapped_box(e, n, size):

@@ -37,7 +37,7 @@ ray leaves the site within 100 m (its horizon is unknown); elsewhere near the ed
 Tiles are 256 m (edges shared with neighbours), indexed in horizon-tiles.json with sha256s (LF);
 the pair receipt lands beside it as horizon_receipt.json.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe src/horizon_tiles.py --site E:/lidar-out/open-land-01
+    python src/horizon_tiles.py --site $LIDAR_OUT/open-land-01
 """
 import argparse, hashlib, json, os, struct, sys, time
 from datetime import datetime, timezone
