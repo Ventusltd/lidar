@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for src/sentinel_site.py and src/s2_fetch.py. No network: a local tiled TIFF stands in for a COG.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe tests/test_sentinel.py
+    python tests/test_sentinel.py
 """
 import datetime as dt, inspect, io, json, os, pathlib, sys, tempfile, traceback
 import numpy as np

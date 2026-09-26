@@ -49,6 +49,17 @@ Data is not covered by that licence (`DATA-LICENCE.md`).
   Citation: https://doi.org/10.5270/ESA-c5d3d65. Tiles built from it must be labelled as surface
   model, 30 m, and must not be mixed with EA tiles in the same set without both notices.
 
+## Copernicus Sentinel-2 L2A (input for `sentinel_site.py`, `s2_fetch.py`)
+- Read over HTTP range requests from Microsoft Planetary Computer, collection `sentinel-2-l2a`
+  (https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a); open STAC search and anonymous SAS token, no account.
+- Licence: Copernicus Sentinel data are free, full and open (Commission Delegated Regulation (EU) No 1159/2013 and
+  Regulation (EU) No 377/2014; Sentinel data legal notice:
+  https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice).
+- Required credit on anything built from them (carried in every `imagery/index.json`):
+  "Contains modified Copernicus Sentinel data [year]".
+- Composite method: masked median (electron) against a central-rank mean of the 40th-60th percentile band
+  (positron), paired on the GPU with a NumPy witness; cloud from the Sen2Cor scene classification (SCL) layer.
+
 ## Sun climate: sources checked 26 September 2026 (`sun_data.py`, `sun_cells.py`, `sun_geom.py`)
 
 | Source | Licence and access (verbatim where quoted) | Verdict |
@@ -81,6 +92,40 @@ Laboratory "General Solar Position Calculations" after Spencer, J.W. (1971) Sear
 (1988) Solar Energy 40(3), 227-235; Meinel, A.B. and Meinel, M.P. (1976) *Applied Solar Energy*; Laue, E.G.
 (1970) Solar Energy 13(1), 43-57; Kasten, F. and Young, A.T. (1989) Applied Optics 28(22), 4735-4738;
 WMO-No. 8, Guide to Instruments and Methods of Observation, Vol. I, ch. 8 (sunshine duration).
+
+## Scripts and the data each one reads
+| Script | Source data (licence) |
+|---|---|
+| `build_site.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `cable_geom.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `cable_sweep.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `canopy_lines.py` | EA DTM and DSMs (OGL v3.0) |
+| `canopy_tiles.py` | EA DTM, First Return DSM and DSM 1 m (OGL v3.0) |
+| `contour_pair.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `contour_tiles.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `contour_topo.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `copernicus.py` | Copernicus DEM GLO-30 (Copernicus free licence) |
+| `copernicus_pair.py` | Copernicus DEM GLO-30 and EA DTM 1 m (both notices) |
+| `cut_tiles.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `earthworks_pair.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `fetch_wcs.py` | EA LIDAR Composite DTM / First Return DSM / DSM 1 m over WCS (OGL v3.0) |
+| `flow_hollows.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `flow_route.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `flow_tiles.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `geotiff_read.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `horizon_march.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `horizon_tiles.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `osgb.py` | none (Ordnance Survey method only) |
+| `pair_gpu.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `piles_sweep.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `s2_fetch.py` | Copernicus Sentinel-2 L2A via Microsoft Planetary Computer (free, full and open) |
+| `sentinel_site.py` | Copernicus Sentinel-2 L2A ("Contains modified Copernicus Sentinel data [year]") |
+| `slope_tiles.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `sun_cells.py` | PVGIS / HadUK-Grid sun climate and EA-derived horizon tiles |
+| `sun_data.py` | PVGIS 5.3 TMY (free, no restrictions) and Met Office HadUK-Grid 1 km sunshine (OGL v3.0, doi:10.5285/789b3065d74a4c948ab05d33556c86d0) |
+| `sun_geom.py` | none (solar position methods only) |
+| `viewshed.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
+| `viewshed_cpu.py` | EA LIDAR Composite DTM 1 m (OGL v3.0) |
 
 ## Methods
 - Slope: Horn, B.K.P. (1981) "Hill shading and the reflectance map", *Proceedings of the IEEE* 69(1),
@@ -117,6 +162,7 @@ WMO-No. 8, Guide to Instruments and Methods of Observation, Vol. I, ch. 8 (sunsh
 | imagecodecs | BSD-3-Clause | 2008-2026 Christoph Gohlke |
 | pyproj (sun_data.py) | MIT | 2006-2026 pyproj contributors |
 | netCDF4 (sun_data.py, HadUK-Grid) | MIT | 2008 Jeffrey Whitaker and netcdf4-python contributors |
+| Pillow (sentinel_site.py, WebP and PNG) | MIT-CMU (HPND) | 1997-2011 Secret Labs AB, 1995-2011 Fredrik Lundh, 2010 Jeffrey A. Clark and contributors |
 | CuPy (optional GPU pair) | MIT | 2015 Preferred Infrastructure, Inc.; Preferred Networks, Inc. |
 | pytest (tests only, `test_copernicus.py`) | MIT | 2004 Holger Krekel and others |
 

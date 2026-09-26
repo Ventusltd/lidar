@@ -42,6 +42,13 @@ Contains public sector information licensed under the Open Government Licence v3
 `sun/cells/*.gsc` and `sun-cells.json` combine that climate with the EA LiDAR horizon, so they are published under
 OGL v3.0 and carry both the PVGIS credit and the Environment Agency line above.
 
+## Imagery from Copernicus Sentinel-2
+
+`imagery/*.webp`, `imagery/*.png` and `imagery/index.json` are derived from Copernicus Sentinel-2 L2A data,
+which are free, full and open (Regulation (EU) No 377/2014 and the Sentinel data legal notice,
+https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice). Wherever they are shown or
+redistributed, carry: "Contains modified Copernicus Sentinel data [year]" with the year of the scenes used.
+
 ## Our own written material
 
 Documentation, receipts and reports written for this repository are licensed under

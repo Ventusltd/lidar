@@ -34,12 +34,21 @@ Free UK LiDAR turned into small, checked 3D terrain tiles for a lightweight brow
    `src/sun_cells.py` (sun positions in `src/sun_geom.py`) applies the horizon tiles to every 4 m cell on the GPU for monthly beam hours, sunshine hours
    and direct irradiation, clear sky and cloud-weighted (`.gsc` tiles, hourly sun path paired with a sub-hourly
    sky-map integral, CPU witness).
+10. **Imagery** (`src/sentinel_site.py`, fetch in `src/s2_fetch.py`): every Sentinel-2 L2A scene of the last four
+    seasons over the site box from Microsoft Planetary Computer (open STAC, anonymous SAS, HTTP range reads), box
+    cloud measured from the SCL layer, seasonal cloud-free composites two ways on the GPU (masked median against a
+    central-rank mean, NumPy witness) and clear dates, written to `<site>/imagery/` (`.webp`, `index.json`); scene
+    samples cached in `<site>/imagery/cache`. Credit: "Contains modified Copernicus Sentinel data [year]".
 
 ```
 python src/build_site.py --name open-land-01 --e 400000 --n 210000 --size 2048
 python src/pair_gpu.py --tiles $LIDAR_OUT/open-land-01
 python src/canopy_tiles.py --site $LIDAR_OUT/open-land-01   # after fetch_box(product="fzdsm1m"/"lzdsm1m")
 ```
+
+Helpers: `src/fetch_wcs.py` (EA WCS 2.0.1 GeoTIFF fetch), `src/geotiff_read.py` (tifffile mosaic),
+`src/cut_tiles.py` (cut and decode `.ght` tiles), `src/osgb.py` (WGS84 to British National Grid). Every script
+and the data it reads is listed in `NOTICE.md`.
 
 ## Local folders
 
@@ -49,7 +58,7 @@ script also takes the folder on the command line (`--tiles`, `--site`, `--cache`
 - `LIDAR_CACHE`: raw GeoTIFF and Copernicus byte-range cache. Default `.local/lidar-cache`.
 - `LIDAR_OUT`: built site folders (`<LIDAR_OUT>/<name>/tiles.json` and tiles). Default `.local/lidar-out`.
 - `WORLD_CACHE`: downloads shared across sites (PVGIS responses and the HadUK-Grid netCDF under
-  `<WORLD_CACHE>/sun/`, Sentinel-2 scenes). Default `.local/world-cache`.
+  `<WORLD_CACHE>/sun/`). Default `.local/world-cache`.
 
 Point them at your own data drive, for example `export LIDAR_CACHE=/data/lidar-cache LIDAR_OUT=/data/lidar-out`
 (or `setx` on Windows). `.local/` is git-ignored. The examples use `python` for any interpreter with NumPy and

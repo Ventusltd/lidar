@@ -22,10 +22,10 @@ Composite, per pixel over the clear observations of a season (reflectance, offse
 
 Output in <site>/imagery/: composite-<season>.webp (205 x 205, 10 m, true colour, alpha 0 where no clear
 look), optional ndvi-/ndwi-<season>.png, date-<YYYYMMDD>.webp, index.json (LF). Scene samples are cached
-under imagery/cache (open data; E: only, never a repository).
+under imagery/cache (open data; inside $LIDAR_OUT, never in the repository).
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe src/sentinel_site.py --site E:/lidar-out/open-land-01
-      [--index E:/lidar-out/sites-index.json] [--indices] [--cpu] [--today YYYY-MM-DD]
+    python src/sentinel_site.py --site $LIDAR_OUT/open-land-01
+      [--index $LIDAR_OUT/sites-index.json] [--indices] [--cpu] [--today YYYY-MM-DD]
 """
 import argparse, datetime as dt, hashlib, io, json, os, sys, time
 from concurrent.futures import ThreadPoolExecutor
@@ -303,13 +303,13 @@ def run(site_dir, entry, today, indices=False, use_cpu=False, workers=8):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--site", required=True)
-    ap.add_argument("--index", default="E:/lidar-out/sites-index.json")
+    ap.add_argument("--index", default=os.path.join(os.environ.get("LIDAR_OUT", os.path.join(".local", "lidar-out")), "sites-index.json"))
     ap.add_argument("--indices", action="store_true", help="also write NDVI and NDWI greyscale PNGs")
     ap.add_argument("--cpu", action="store_true")
     ap.add_argument("--today", default=None)
     a = ap.parse_args(argv)
     name = os.path.basename(os.path.normpath(a.site))
-    entry = next((s for s in json.load(open(a.index))["sites"] if s["name"] == name), None)
+    entry = next((s for s in json.load(open(a.index, encoding="utf-8"))["sites"] if s["name"] == name), None)
     if entry is None:
         sys.exit(f"{name} not in {a.index}")
     today = dt.date.fromisoformat(a.today) if a.today else dt.date.today()
