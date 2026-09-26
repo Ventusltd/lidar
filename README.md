@@ -15,6 +15,9 @@ Free UK LiDAR turned into small, checked 3D terrain tiles for a lightweight brow
    counted, never suppressed, and written to a seeded receipt.
 5. **Derive** slope and aspect tiles (`src/slope_tiles.py`) and earthworks volumes for trenches and platforms
    (`src/earthworks_pair.py`), each checked the same way.
+6. **Trace** contour lines at 0.5 m, 1 m and 5 m (`src/contour_tiles.py`, pair in `src/contour_pair.py`):
+   marching squares against row-and-column crossings on the GPU, a CPU witness, Douglas-Peucker at 0.25 m,
+   per-tile `ggc1` JSON indexed in `contour-tiles.json` with SHA-256s.
 
 ```
 python src/build_site.py --name open-land-01 --e 400000 --n 210000 --size 2048
