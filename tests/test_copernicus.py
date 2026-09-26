@@ -196,3 +196,7 @@ def test_pair_finds_known_offset(built):
         s = rec["difference_block_mean"]
         assert abs(s["percentiles_m"]["50"] - 1.5) < 0.02 and s["std_m"] < 0.02
         assert rec["nodes"] > 3000
+
+
+if __name__ == "__main__":  # the repo runs tests as scripts: python tests/test_copernicus.py
+    sys.exit(pytest.main([__file__, "-q", "-p", "no:cacheprovider"]))
