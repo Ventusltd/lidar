@@ -96,10 +96,10 @@ def test_nodata_is_marked_and_not_a_blocker():
 def test_observers_from_lines_points_and_geojson(tmp):
     pts = vs.along([[0, 0], [100, 0], [100, 30]], 50)
     assert [tuple(np.round(p, 6)) for p in pts] == [(0, 0), (50, 0), (100, 0), (100, 30)]
-    (tmp / "w.json").write_text(json.dumps({"lines": [{"pts": [[0, 0], [0, 120]]}], "points": [[7, 8]]}))
+    (tmp / "w.json").write_text(json.dumps({"lines": [{"pts": [[0, 0], [0, 120]]}], "points": [[7, 8]]}), encoding="utf-8", newline="\n")
     (tmp / "g.json").write_text(json.dumps({"type": "FeatureCollection", "features": [
         {"geometry": {"type": "Point", "coordinates": [1, 2]}},
-        {"geometry": {"type": "MultiLineString", "coordinates": [[[0, 0], [60, 0]]]}}]}))
+        {"geometry": {"type": "MultiLineString", "coordinates": [[[0, 0], [60, 0]]]}}]}), encoding="utf-8", newline="\n")
     obs = vs.load_observers([tmp / "w.json", tmp / "g.json"], 50, points=[(3, 4)])
     assert obs[0] == (3, 4) and (7, 8) in obs and (1, 2) in obs
     assert len(obs) == 1 + 1 + 4 + 1 + 3

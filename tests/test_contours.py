@@ -142,7 +142,7 @@ def test_written_tiles_index_and_receipt_are_lf_with_true_hashes():
         os.makedirs(site)
         np.save(os.path.join(site, "source.npy"), g)
         json.dump({"origin_e_m": 400000, "origin_n_m": 200000, "spacing_m": 1, "rows": "south-to-north"},
-                  open(os.path.join(site, "source.json"), "w"))
+                  open(os.path.join(site, "source.json"), "w", encoding="utf-8", newline="\n"))
         assert ct.main(["--site", site, "--cpu"]) == 0
         out = os.path.join(site, "contours")
         raw = open(os.path.join(out, ct.INDEX), "rb").read()

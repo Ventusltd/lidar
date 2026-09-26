@@ -20,7 +20,7 @@ OE, ON = 400000, 200000
 
 def site(tmp, z):
     np.save(tmp / "source.npy", z)
-    json.dump({"origin_e_m": OE, "origin_n_m": ON, "spacing_m": 1}, open(tmp / "source.json", "w"))
+    json.dump({"origin_e_m": OE, "origin_n_m": ON, "spacing_m": 1}, open(tmp / "source.json", "w", encoding="utf-8", newline="\n"))
     cut_grid(z, OE, ON, str(tmp), "synthetic")
     return str(tmp)
 

@@ -132,7 +132,7 @@ def hilly(tmp_path, n=601, seed=5):
     x, y = grid(n)
     z = 120 + 0.03 * x + 4 * np.sin(x / 37) * np.cos(y / 23) + rng.normal(0, 0.05, x.shape)
     np.save(tmp_path / "source.npy", z)
-    json.dump({"origin_e_m": OE, "origin_n_m": ON, "spacing_m": 1}, open(tmp_path / "source.json", "w"))
+    json.dump({"origin_e_m": OE, "origin_n_m": ON, "spacing_m": 1}, open(tmp_path / "source.json", "w", encoding="utf-8", newline="\n"))
 
 
 def test_sweep_hilly(tmp_path):
@@ -154,7 +154,7 @@ def test_sweep_hilly(tmp_path):
 
 def test_bounded_by_seconds(tmp_path):
     np.save(tmp_path / "source.npy", np.full((401, 401), 50.0))
-    json.dump({"origin_e_m": OE, "origin_n_m": ON, "spacing_m": 1}, open(tmp_path / "source.json", "w"))
+    json.dump({"origin_e_m": OE, "origin_n_m": ON, "spacing_m": 1}, open(tmp_path / "source.json", "w", encoding="utf-8", newline="\n"))
     r = cs.sweep(str(tmp_path), routes=10 ** 6, seconds=0.0, batch=7, use_gpu=False, witness=4, cables=CABLES)
     assert r["counts"]["stopped_by"] == "seconds" and r["counts"]["routes"] == 7
     assert r["disagreement"]["max_rel"] < 1e-5          # flat: 3D is the plan

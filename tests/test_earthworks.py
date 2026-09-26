@@ -81,7 +81,7 @@ def test_sweep_receipt(tmp_path):
     x, y = np.meshgrid(np.arange(401.0), np.arange(401.0))
     z = 120 + 0.03 * x + 4 * np.sin(x / 37) * np.cos(y / 23) + rng.normal(0, 0.05, x.shape)
     np.save(tmp_path / "source.npy", z)
-    json.dump({"origin_e_m": OE, "origin_n_m": ON, "spacing_m": 1}, open(tmp_path / "source.json", "w"))
+    json.dump({"origin_e_m": OE, "origin_n_m": ON, "spacing_m": 1}, open(tmp_path / "source.json", "w", encoding="utf-8", newline="\n"))
     for gpu in [False] + ([True] if ew.cp is not None else []):
         r = ew.sweep(str(tmp_path), trenches=60, seconds=30, batch=25, use_gpu=gpu)
         assert r["counts"]["trenches"] == 60 and r["counts"]["bent"] > 0 and r["counts"]["straight"] > 0
@@ -92,7 +92,7 @@ def test_sweep_receipt(tmp_path):
 
 def test_bounded_by_seconds(tmp_path):
     np.save(tmp_path / "source.npy", np.full((201, 201), 50.0))
-    json.dump({"origin_e_m": OE, "origin_n_m": ON, "spacing_m": 1}, open(tmp_path / "source.json", "w"))
+    json.dump({"origin_e_m": OE, "origin_n_m": ON, "spacing_m": 1}, open(tmp_path / "source.json", "w", encoding="utf-8", newline="\n"))
     r = ew.sweep(str(tmp_path), trenches=10 ** 6, seconds=0.0, batch=5, use_gpu=False)
     assert r["counts"]["stopped_by"] == "seconds" and r["counts"]["trenches"] == 5
 
