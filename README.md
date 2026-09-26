@@ -15,10 +15,15 @@ Free UK LiDAR turned into small, checked 3D terrain tiles for a lightweight brow
    counted, never suppressed, and written to a seeded receipt.
 5. **Derive** slope and aspect tiles (`src/slope_tiles.py`) and earthworks volumes for trenches and platforms
    (`src/earthworks_pair.py`), each checked the same way.
+6. **Canopy** (`src/canopy_tiles.py`, `src/canopy_lines.py`): canopy height = first-return DSM minus DTM, tall
+   cells classed as vegetation or structure by two independent methods on the GPU (returns: first minus last;
+   shape: roughness about a plane), a CPU witness, hedgerow lines by opening and thinning. Only cells both methods
+   call vegetation are published with a height; structures and disagreements are hidden, never drawn.
 
 ```
 python src/build_site.py --name open-land-01 --e 400000 --n 210000 --size 2048
 python src/pair_gpu.py --tiles E:/lidar-out/open-land-01
+python src/canopy_tiles.py --site E:/lidar-out/open-land-01   # after fetch_box(product="fzdsm1m"/"lzdsm1m")
 ```
 
 ## Tile format `.ght`
