@@ -172,6 +172,45 @@ def test_decode_refuses_damage():
         raise AssertionError("damaged tile accepted")
 
 
+def test_direction_encoding_is_explicit(tmp):
+    """FEEDBACK fix 4: header flags and index say COMPASS; a cell draining north decodes as N, not an ESRI code."""
+    x, y = grid_xy(ft.N)
+    g = 100.0 - 0.05 * y                                   # falls to the north
+    rec, o = ft.run(g, 0, 0, use_gpu=bool(ft.cp), witness_on=False)
+    idx = ft.write_tiles(str(tmp), o, 0, 0, "synth")
+    head, a, d = ft.decode(open(tmp / "tiles/0_0.gfl", "rb").read())
+    assert head["flags"] & ft.FLAG_COMPASS and head["dir_encoding"] == "compass" and head["method"] == 1
+    assert d[100, 100] == 0 and idx["dir_codes"][str(d[100, 100])] == "N"
+    assert idx["dir_encoding"] == "compass" and "NOT a direction code" in idx["header_layout"]
+    assert idx["default_class"] == 33 and "filled surface" in idx["label"]
+    assert idx["attribution"].startswith("© Environment Agency") and idx["licence"] == "Open Government Licence v3.0"
+
+
+def test_ponding_hollows_are_recorded(tmp):
+    """FEEDBACK fix 4: the real hollow is written (level, volume, cells); tiny puddles are left out."""
+    import flow_hollows as fh
+    x, y = grid_xy(ft.N)
+    g = 10.0 + 0.01 * y
+    g[30:35, 30:35] -= 1.0                                  # the square pit: 24.25 m3 to its spill level
+    g[100, 100] -= 0.02                                     # a 1 cm, 0.01 m3 puddle: too small to keep
+    rec, o = ft.run(g, 1000, 2000, use_gpu=bool(ft.cp), witness_on=False)
+    idx = ft.write_tiles(str(tmp), o, 1000, 2000, "synth")
+    raw = open(tmp / fh.INDEX, "rb").read()
+    hol = json.loads(raw.decode("utf-8"))
+    assert bytes([13]) not in raw and idx["hollows"]["count"] == 1 and len(hol["hollows"]) == 1
+    assert rec["ponding"]["depressions"] == 2
+    h = hol["hollows"][0]
+    assert abs(h["volume_m3"] - 24.25) < 1e-6 and h["area_m2"] == 25 and abs(h["level_m"] - 10.29) < 1e-9
+    assert h["bbox"] == [1030, 2030, 1034, 2034] and h["tiles"] == ["0_0"]
+    t = hol["tiles"][0]
+    blob = open(tmp / t["file"], "rb").read()
+    assert hashlib.sha256(blob).hexdigest() == t["sha256"]
+    head, depth = fh.decode(blob)
+    assert head["wet_count"] == 25 and head["hollows"] == 1 and depth[100, 100] == 0
+    assert depth[30, 30] == 99 and depth[34, 34] == 95      # 10.29 - (10.30 - 1) m and 10.29 - (10.34 - 1) m
+    assert (o["dir"][30:35, 30:35] != ft.OUTLET).all()
+
+
 if __name__ == "__main__":
     fails = 0; t0 = time.perf_counter()
     for name, fn in sorted((n, f) for n, f in globals().items() if n.startswith("test_") and callable(f)):

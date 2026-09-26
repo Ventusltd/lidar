@@ -47,6 +47,38 @@ def test_wall_to_the_north():
         assert rec["photons"] == 0 or rec["photons_with_near_horizon_lt_32m"] <= rec["photons"]
 
 
+def test_near_field_knolls_are_resolved():
+    """FEEDBACK fix 2: rough ground, horizons within a few metres; the march must match a dense bilinear march."""
+    rng = np.random.default_rng(20260928)
+    g = 100.0 + rng.normal(0.0, 0.4, size=(81, 81))
+    ux, uy = hz.directions()
+    r = c = 40
+    best, reach, at = hz.electron_cpu(g, r, c)
+    d = np.arange(1, 32001) * 0.001                        # every millimetre out to 32 m
+    worst = 0.0
+    for a in range(hz.NAZ):
+        x, y = c + d * ux[a], r + d * uy[a]
+        i = np.minimum(np.floor(x).astype(int), 79); j = np.minimum(np.floor(y).astype(int), 79)
+        fx, fy = x - i, y - j
+        h = (1 - fx) * (1 - fy) * g[j, i] + fx * (1 - fy) * g[j, i + 1] + (1 - fx) * fy * g[j + 1, i] + fx * fy * g[j + 1, i + 1]
+        ref = np.degrees(np.arctan(max(((h - g[r, c]) / d).max(), best[a])))
+        worst = max(worst, abs(ref - np.degrees(np.arctan(best[a]))))
+    assert worst < 0.05, worst                             # a 1 m march is 20 degrees off here
+    for gpu in GPU[1:]:                                    # the card marches the same samples
+        e, _, _, _ = hz.electron_gpu(g, np.array([r]), np.array([c]))
+        assert np.abs(hz.host(e)[0] - best).max() < 1e-12
+
+
+def test_index_carries_caveat_and_attribution(tmp):
+    """FEEDBACK fix 2: terrain-only caveat and EA attribution in horizon-tiles.json."""
+    q = np.zeros((hz.NS, hz.NS, hz.NAZ), np.int16)
+    hz.write_tiles(str(tmp), q, 0, 0, "synthetic")
+    j = json.loads(open(tmp / hz.INDEX, "rb").read().decode("utf-8"))
+    assert "hedges, trees and buildings" in j["caveat"]
+    assert j["attribution"] == "© Environment Agency copyright and/or database right 2022. All rights reserved."
+    assert j["licence"] == "Open Government Licence v3.0" and "near_field" in j
+
+
 def test_shaded_follows_the_sun():
     h = np.zeros(hz.NAZ); h[0] = 16.7; h[1] = 10.0
     assert hz.shaded(h, 0.0, 16.0) and not hz.shaded(h, 0.0, 17.0)
@@ -58,10 +90,11 @@ def test_shaded_follows_the_sun():
 
 
 def test_bands_cover_every_distance_once():
-    prev = 1.0
+    prev = hz.NEAR_DS_M - 1e-9
     for k, ds in hz.bands(3000):
-        assert ds[0] > prev and ds[0] - prev <= (1 << k)
-        assert np.all(np.diff(ds) == (1 << k)) if len(ds) > 1 else True
+        step = hz.NEAR_DS_M if k == 0 else (1 << k)
+        assert ds[0] > prev and ds[0] - prev <= step
+        assert np.allclose(np.diff(ds), step, rtol=0, atol=1e-9) if len(ds) > 1 else True
         prev = ds[-1]
     assert prev >= 3000 - (1 << k)
 

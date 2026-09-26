@@ -37,6 +37,7 @@ analysis spacing (default 2 m, every second node): hedges, trees and buildings a
 import argparse, hashlib, json, os, struct, sys, time
 from datetime import datetime, timezone
 import numpy as np
+from cut_tiles import ea_notice, TERRAIN_ONLY  # noqa: F401
 import viewshed_cpu as vc
 
 try:
@@ -53,7 +54,8 @@ MAGIC = b"GGV1"
 HEADER = struct.Struct("<4sHHHHiiHHII")
 assert HEADER.size == 32
 INDEX, RECEIPT = "visibility-tiles.json", "visibility_receipt.json"
-CAVEAT = "computed from terrain only; hedges and trees not included"
+CAVEAT = TERRAIN_ONLY
+CAVEAT_CANOPY = "hedges and trees from the canopy model; buildings are not included"
 
 KERNELS = r"""
 __device__ __forceinline__ void fdiv(int a, int n, int* fl, int* rem) {
@@ -312,7 +314,7 @@ def write_tiles(out_dir, counts, oe, on, cell, site_name, eye, tgt, observers, c
     index = dict(format="gvs1", crs="EPSG:27700", site=dict(name=site_name, origin_e=int(oe), origin_n=int(on)),
                  tile_m=TILE_M, spacing_m=cell, eye_m=eye, target_m=tgt, method="R3 exact sight line (Franklin and Ray 1994)",
                  curvature=dict(on=bool(curvature), R_m=R_EARTH, k=K_REFRACTION), canopy=bool(canopy),
-                 caveat=None if canopy else CAVEAT,
+                 caveat=CAVEAT_CANOPY if canopy else CAVEAT, **ea_notice(),
                  values="0 hidden from every observer; 1..254 observers who see it (254 = 254 or more); 255 no data",
                  observers=[[round(e, 1), round(n, 1)] for e, n in observers], tiles=entries,
                  generated_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), **(extra or {}))
@@ -335,7 +337,7 @@ def main(argv=None):
     ap.add_argument("--out", help="default SITE/visibility")
     ap.add_argument("--cpu", action="store_true")
     a = ap.parse_args(argv)
-    meta = json.load(open(os.path.join(a.site, "source.json")))
+    meta = json.load(open(os.path.join(a.site, "source.json"), encoding="utf-8"))
     if meta.get("rows", "south-to-north") != "south-to-north":
         raise SystemExit("source rows must run south to north")
     oe, on, sp0 = meta["origin_e_m"], meta["origin_n_m"], float(meta.get("spacing_m", 1))

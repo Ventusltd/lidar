@@ -134,19 +134,19 @@ class RangeCache:
             return None, None
         if os.path.exists(path):
             data = open(path, "rb").read()
-            total = open(os.path.join(d, "SIZE")).read().strip()
+            total = open(os.path.join(d, "SIZE"), encoding="utf-8").read().strip()
             self.hit_bytes += len(data)
             return data, int(total)
         data, total = self.fetch(tile_url(name), start, end)
         self.requests += 1
         os.makedirs(d, exist_ok=True)
         if data is None:
-            open(missing, "w").close()
+            open(missing, "w", encoding="utf-8").close()
             return None, None
         with open(path + ".part", "wb") as f:
             f.write(data)
         os.replace(path + ".part", path)
-        with open(os.path.join(d, "SIZE"), "w", newline="\n") as f:
+        with open(os.path.join(d, "SIZE"), "w", encoding="utf-8", newline="\n") as f:
             f.write(f"{total if total is not None else len(data)}\n")
         self.fetched_bytes += len(data)
         return data, total

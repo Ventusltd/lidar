@@ -32,6 +32,7 @@ slope-tiles.json with sha256s; the pair receipt lands beside it as slope_receipt
 import argparse, hashlib, json, os, struct, sys, time
 from datetime import datetime, timezone
 import numpy as np
+from cut_tiles import ea_notice, TERRAIN_ONLY  # noqa: F401
 
 try:
     import cupy as cp
@@ -162,7 +163,7 @@ def write_tiles(out_dir, cls, asp, oe, on, site_name, spacing_mm=1000):
                                 n0=int(on + r0), bytes=len(blob), steep=int(((sc >= 3) & valid).sum()), share=share))
     index = dict(format="gst1", crs="EPSG:27700", site=dict(name=site_name, origin_e=int(oe), origin_n=int(on)),
                  tile_m=TILE_M, spacing_m=spacing_mm / 1000, method="horn", classes_pct=LABELS,
-                 aspect="0..7 downslope N NE E SE S SW W NW, 8 flat (<0.5 %), 255 no data",
+                 aspect="0..7 downslope N NE E SE S SW W NW, 8 flat (<0.5 %), 255 no data", **ea_notice(),
                  tiles=entries, generated_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
     with open(os.path.join(out_dir, INDEX), "w", encoding="utf-8", newline="\n") as f:
         json.dump(index, f, indent=1)
@@ -258,7 +259,7 @@ def main(argv=None):
     ap.add_argument("--out", help="default SITE/slope")
     ap.add_argument("--cpu", action="store_true")
     a = ap.parse_args(argv)
-    meta = json.load(open(os.path.join(a.site, "source.json")))
+    meta = json.load(open(os.path.join(a.site, "source.json"), encoding="utf-8"))
     grid = np.load(os.path.join(a.site, "source.npy"))
     if meta.get("rows", "south-to-north") != "south-to-north":
         raise SystemExit("source rows must run south to north")

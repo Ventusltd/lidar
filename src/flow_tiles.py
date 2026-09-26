@@ -33,7 +33,8 @@ Bounded and thermal-safe: fill rounds, peel levels and wall time are capped (MAX
 does a few seconds of work, and nothing loops without a convergence check.
 
 .gfl v1 ("GGF1"), little-endian, 32-byte header then two u8 bodies:
-    0 char[4] "GGF1" | 4 u16 version=1 | 6 u16 samples=257 | 8 u16 spacing_mm | 10 u16 flags=0
+    0 char[4] "GGF1" | 4 u16 version=1 | 6 u16 samples=257 | 8 u16 spacing_mm | 10 u16 flags: bit 0 set =
+      the direction body is COMPASS coded (below; never ESRI 1/2/4/../128), and it is always set
    12 i32 origin_e_m | 16 i32 origin_n_m (SW corner) | 20 u8 log_scale=10 | 21 u8 method=1 (D8)
    22 u16 channel_m2 (2000) | 24 u32 nodata_count | 28 u32 channel_count (D8 acc >= channel_m2)
    32 u8[257*257] accumulation class k = floor(10 * log10(area m^2)) clipped 0..254 (area >= 10^(k/10)),
@@ -46,7 +47,9 @@ does a few seconds of work, and nothing loops without a convergence check.
 import argparse, hashlib, json, math, os, sys, time
 from datetime import datetime, timezone
 import numpy as np
+from cut_tiles import ea_notice, TERRAIN_ONLY  # noqa: F401
 import flow_route
+import flow_hollows
 from flow_route import (  # noqa: F401  (re-exported: tests and callers use flow_tiles.*)
     cp, TILE_M, N, EPS, CHANNEL_M2, LOG_SCALE, NODATA, OUTLET, DR, DC, MAX_SECONDS, TOL_WIT, MAGIC, HEADER,
     INDEX, RECEIPT, masks, gpu_fill, gpu_route, gpu_accumulate, cpu_fill, cpu_route, cpu_accumulate, _nb,
@@ -255,13 +258,21 @@ def _run(grid, oe, on, sp, use_gpu, witness_on, window, seconds):
 
 
 # ---------------------------------------------------------------- tiles
+FLAG_COMPASS = 1
+DIR_CODES = {"0": "N", "1": "NE", "2": "E", "3": "SE", "4": "S", "5": "SW", "6": "W", "7": "NW",
+             "8": "outlet (site edge), not a pit", "255": "no data"}
+HEADER_LAYOUT = ("<4sHHHHiiBBHII: magic, version, samples, spacing_mm, flags (bit 0 compass), origin_e_m, "
+                 "origin_n_m, byte 20 log_scale, byte 21 method (1 = D8; NOT a direction code), bytes 22-23 "
+                 "channel_m2, nodata_count, channel_count")
+
+
 def encode(acls, d8, e0, n0, spacing_mm=1000, channel=None):
     if acls.shape != (N, N) or d8.shape != (N, N):
         raise ValueError(f"flow tile must be {N}x{N}")
     nod = int((d8 == NODATA).sum())
     kmin = math.floor(LOG_SCALE * math.log10(CHANNEL_M2))
     chan = int(channel) if channel is not None else int(((acls >= kmin) & (acls != NODATA)).sum())
-    head = HEADER.pack(MAGIC, 1, N, spacing_mm, 0, int(e0), int(n0), LOG_SCALE, 1, int(CHANNEL_M2), nod, chan)
+    head = HEADER.pack(MAGIC, 1, N, spacing_mm, FLAG_COMPASS, int(e0), int(n0), LOG_SCALE, 1, int(CHANNEL_M2), nod, chan)
     return head + np.ascontiguousarray(acls, np.uint8).tobytes() + np.ascontiguousarray(d8, np.uint8).tobytes()
 
 
@@ -274,7 +285,8 @@ def decode(blob):
     if len(blob) != HEADER.size + 2 * n * n:
         raise ValueError(f".gfl size {len(blob)} != {HEADER.size + 2 * n * n}")
     body = np.frombuffer(blob, np.uint8, offset=HEADER.size)
-    head = dict(samples=n, spacing_mm=sp, origin_e_m=e0, origin_n_m=n0, log_scale=scale, method=method,
+    head = dict(samples=n, spacing_mm=sp, flags=flags, dir_encoding="compass" if flags & FLAG_COMPASS else "unknown",
+                origin_e_m=e0, origin_n_m=n0, log_scale=scale, method=method,
                 channel_m2=chm2, nodata_count=nod, channel_count=chan)
     return head, body[:n * n].reshape(n, n), body[n * n:].reshape(n, n)
 
@@ -305,12 +317,17 @@ def write_tiles(out_dir, o, oe, on, site_name, spacing_mm=1000):
                                 n0=int(on + r0), bytes=len(blob), channel=int(chan[sl].sum()),
                                 photons=int(ph[sl].sum()), max_log_class=int(acls[sl][acls[sl] != NODATA].max()),
                                 pond_m3=round(float(depth[sl].sum()) * (spacing_mm / 1000) ** 2, 3)))
+    hol = flow_hollows.write(out_dir, o, oe, on, spacing_mm, TILE_M, ea_notice(), label8)
     index = dict(format="gfl1", crs="EPSG:27700", site=dict(name=site_name, origin_e=int(oe), origin_n=int(on)),
                  tile_m=TILE_M, spacing_m=spacing_mm / 1000, method="d8 on eps-filled surface",
                  accumulation=f"u8 k = floor({LOG_SCALE}*log10(area m2)), area >= 10^(k/{LOG_SCALE}); 255 no data",
                  direction="0..7 = N NE E SE S SW W NW, 8 outlet (site edge), 255 no data",
-                 channel_m2=CHANNEL_M2, licence="OGL v3.0, see DATA-LICENCE.md",
-                 attribution="© Environment Agency copyright and/or database right 2022. All rights reserved.",
+                 dir_encoding="compass", dir_codes=DIR_CODES,
+                 header_layout=HEADER_LAYOUT, default_class=math.floor(LOG_SCALE * math.log10(CHANNEL_M2)),
+                 label="D8 on a filled surface (a step uphill inside a filled hollow is expected); "
+                       "computed from LiDAR, not an official flood map",
+                 hollows=dict(file=flow_hollows.INDEX, count=len(hol["hollows"]), tiles=len(hol["tiles"])),
+                 channel_m2=CHANNEL_M2, **ea_notice(),
                  tiles=entries, generated_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
     dump_json(os.path.join(out_dir, INDEX), index)
     return index
@@ -324,7 +341,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if cp is None:
         raise SystemExit("flow_tiles needs the GPU for a full site (the CPU path is the witness)")
-    meta = json.load(open(os.path.join(a.site, "source.json")))
+    meta = json.load(open(os.path.join(a.site, "source.json"), encoding="utf-8"))
     grid = np.load(os.path.join(a.site, "source.npy"))
     if meta.get("rows", "south-to-north") != "south-to-north":
         raise SystemExit("source rows must run south to north")
@@ -334,6 +351,7 @@ def main(argv=None):
     index = write_tiles(out, o, oe, on, os.path.basename(os.path.normpath(a.site)), int(round(sp * 1000)))
     rec.update(tiles=len(index["tiles"]), script_sha256=hashlib.sha256(open(__file__, "rb").read()).hexdigest(),
                route_sha256=hashlib.sha256(open(flow_route.__file__, "rb").read()).hexdigest(),
+               hollows_sha256=hashlib.sha256(open(flow_hollows.__file__, "rb").read()).hexdigest(),
                source_sha256=hashlib.sha256(open(os.path.join(a.site, "source.npy"), "rb").read()).hexdigest(),
                index_sha256=hashlib.sha256(open(os.path.join(out, INDEX), "rb").read()).hexdigest())
     dump_json(os.path.join(out, RECEIPT), rec)

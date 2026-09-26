@@ -37,6 +37,15 @@ HEADER_BYTES = HEADER.size  # 32
 BODY_BYTES = SAMPLES * SAMPLES * 2
 ATTRIBUTION = ("© Environment Agency copyright and/or database right "
                "2022. All rights reserved.")
+LICENCE = "Open Government Licence v3.0"
+LICENCE_URL = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+DERIVED_FROM = "Environment Agency LIDAR Composite DTM 1 m"
+TERRAIN_ONLY = "computed from bare-earth terrain only; hedges, trees and buildings are not included"
+
+
+def ea_notice():
+    """Attribution and licence fields every index of EA-derived data carries (NOTICE.md, DATA-LICENCE.md)."""
+    return dict(attribution=ATTRIBUTION, licence=LICENCE, licence_url=LICENCE_URL, derived_from=DERIVED_FROM)
 assert HEADER_BYTES == 32
 
 
@@ -127,7 +136,8 @@ def cut_grid(grid, origin_e, origin_n, out_dir, site_name, source=""):
         site=dict(name=site_name, origin_e=int(origin_e),
                   origin_n=int(origin_n)),
         tile_m=TILE_M, spacing_m=1, tiles=entries,
-        attribution=ATTRIBUTION, source=source,
+        attribution=ATTRIBUTION, licence=LICENCE, licence_url=LICENCE_URL,
+        source=source,
         generated_utc=datetime.now(timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"))
     with open(os.path.join(out_dir, "tiles.json"), "w", encoding="utf-8",

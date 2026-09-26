@@ -166,6 +166,45 @@ def test_written_tiles_index_and_receipt_are_lf_with_true_hashes():
                 assert np.abs(zz - lv["z"]).max() < 0.01 * 0.05 + 1e-9    # 1 cm rounding on a 5 % plane
 
 
+def _brute_crossings(lines):
+    """Proper crossings, every stored segment against every other in blocks (exact on integer cm)."""
+    A = np.concatenate([q[:-1] for q in lines]); B = np.concatenate([q[1:] for q in lines])
+    line = np.concatenate([np.full(len(q) - 1, n) for n, q in enumerate(lines)])
+    idx = np.concatenate([np.arange(len(q) - 1) for q in lines])
+    def orient(a, b, c):
+        return np.sign((b[..., 0] - a[..., 0]) * (c[..., 1] - a[..., 1]) - (b[..., 1] - a[..., 1]) * (c[..., 0] - a[..., 0]))
+    bad = 0
+    for r0 in range(0, len(A), 256):
+        a, b = A[r0:r0 + 256, None], B[r0:r0 + 256, None]
+        hit = (orient(a, b, A[None]) * orient(a, b, B[None]) < 0) & (orient(A[None], B[None], a) * orient(A[None], B[None], b) < 0)
+        hit &= ~((line[r0:r0 + 256, None] == line[None]) & (np.abs(idx[r0:r0 + 256, None] - idx[None]) <= 1))
+        bad += int(hit.sum())
+    return bad // 2
+
+
+def test_simplified_lines_never_cross():
+    """FEEDBACK fix 3: Douglas-Peucker alone makes these two lines cross; the tile check puts a vertex back."""
+    import contour_topo as topo
+    a = np.array([[0, 0], [2, 0.24], [10, 0.24]], float)       # higher level
+    b = np.array([[0, -0.1], [2, 0.2], [4, -0.1]], float)      # lower level, below a everywhere
+    lines = [(a, ct.simplify_mask(a, 0.25)), (b, ct.simplify_mask(b, 0.25))]
+    assert not lines[0][1][1] and lines[1][1][1]                # a's corner dropped, b's kept: they cross
+    found, left, touch, restored = topo.untangle(lines, 0.0, 0.0)
+    assert found >= 1 and left == 0 and touch == 0 and restored >= 1 and lines[0][1][1]
+    # rough ground: whatever Douglas-Peucker does, the stored lines of a tile never cross
+    x, y = mesh(129)
+    g = 50 + 0.08 * x + 2 * np.sin(x / 9) * np.cos(y / 7) + np.random.default_rng(0).normal(0, 0.15, size=x.shape)
+    for gpu in GPU:
+        rec, tiles = ct.run(g, use_gpu=gpu, witness_on=False)
+        sim = rec["simplify"]
+        assert sim["crossings_found"] > 0 and sim["vertices_restored"] > 0, sim   # Douglas-Peucker alone crosses here
+        assert sim["crossings"] == 0 and sim["within_tol"], sim
+        for (tx, ty), lv in tiles.items():
+            cm = [np.rint((q - (tx * ct.TILE_M, ty * ct.TILE_M)) * 100).astype(np.int64) for ls in lv.values() for q in ls]
+            assert _brute_crossings(cm) == 0
+    assert "traced marching-squares line" in ct.TOL_BASIS
+
+
 if __name__ == "__main__":
     fails = 0
     for name, fn in inspect.getmembers(sys.modules[__name__], inspect.isfunction):

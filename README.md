@@ -50,6 +50,9 @@ python src/canopy_tiles.py --site E:/lidar-out/open-land-01   # after fetch_box(
 - `src/flow_tiles.py`: where water goes and sits: depression fill, D8 against D-infinity routing on the GPU, `.gfl` tiles.
 - `src/flow_route.py`: flow routing core (CUDA kernels and the CPU priority-flood witness) used by `flow_tiles.py`.
 - `src/cable_geom.py`: ground, bend rule and filleted plan geometry for `cable_sweep.py` (split out to stay under 400 lines).
+- `src/horizon_march.py`: the horizon ray march (GPU and CPU witness), exact on the bilinear surface out to 32 m.
+- `src/contour_topo.py`: keeps simplified contours from touching or crossing, per tile, by putting dropped vertices back.
+- `src/flow_hollows.py`: ponding hollows of the fill, `flow-hollows.json` and per-tile `.gph` depth masks.
 
 ## Outside EA coverage: Copernicus DEM GLO-30
 

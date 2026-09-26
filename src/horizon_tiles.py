@@ -9,12 +9,14 @@ The source is a bare-earth model (DTM): hedges, trees and buildings cast no shad
 
 Two channels, photons back (the electron/positron pattern of pair_gpu.py):
 
-  electron   a ray march along each azimuth on the 1 m grid, one bilinear sample every metre from 1 m
-             out to the edge of the site (a CUDA kernel, float64, no fused multiply-add).
+  electron   a ray march along each azimuth on the 1 m grid (horizon_march.py, a CUDA kernel, float64, no
+             fused multiply-add): out to 32 m EXACT on the bilinear surface (cut at every grid line, the
+             in-cell maximum of the quadratic taken), where a 1 m march missed knolls by up to 3.8
+             degrees; then one bilinear sample every metre to the edge of the site.
   positron   a different sampling: a max pyramid (level k holds the highest node in each 2^k m block),
              distance bands d in [16 * 2^k, 32 * 2^k) sampled every 2^k m on level k, nearest block,
-             and the first band staggered half a metre (1.5, 2.5 .. 31.5 m) with the four-corner bilinear
-             polynomial on the 1 m grid (CuPy array operations).
+             and the first band staggered half a step (0.15, 0.25 .. 31.95 m, every 0.1 m) with the
+             four-corner bilinear polynomial on the 1 m grid (CuPy array operations).
              Pooling takes the highest point of a block, so the positron reads a little high far out.
   photons    (cell, azimuth) pairs where |electron - positron| > 1 degree. COUNTED and located, never
              suppressed; the receipt says how many sit where the electron's horizon is within 32 m
@@ -23,7 +25,8 @@ Two channels, photons back (the electron/positron pattern of pair_gpu.py):
              lerps, pyramid built blockwise from level 0, not by repeated halving); both channels must
              agree with the GPU within 1e-9 degree and in reach.
 
-Azimuths are clockwise from GRID north, k * 11.25 degrees, k = 0..31. A value is no data when the
+Earth curvature is omitted: on a 2 km site it moves a horizon by under 0.01 degree (larger sites will
+need it, as viewshed.py applies it). Azimuths are clockwise from GRID north, k * 11.25 degrees, k = 0..31. A value is no data when the
 ray leaves the site within 100 m (its horizon is unknown); elsewhere near the edge it is a lower bound.
 
 .ghz v1 ("GHZ1"), little-endian, 32-byte header then an i16 body:
@@ -39,6 +42,8 @@ the pair receipt lands beside it as horizon_receipt.json.
 import argparse, hashlib, json, os, struct, sys, time
 from datetime import datetime, timezone
 import numpy as np
+from cut_tiles import ea_notice, TERRAIN_ONLY  # noqa: F401
+from horizon_march import electron_gpu, electron_cpu, NEAR_M  # noqa: F401  (tests use horizon_tiles.*)
 
 try:
     import cupy as cp
@@ -53,7 +58,9 @@ NAZ = 32
 UNIT = 100                                     # centidegrees
 NODATA = -32768
 MIN_REACH_M = 100
-BAND0 = 32                                     # positron: the staggered bilinear band ends at 31.5 m
+BAND0 = 32                                     # positron: the staggered bilinear band ends at 31.95 m
+NEAR_DS_M = 0.1                                # positron: 0.1 m steps in its first band
+NEAR_N = 320                                   # 32 m / NEAR_DS_M
 TOL_DEG = 1.0
 TOL_WIT = 1e-9
 MAGIC = b"GHZ1"
@@ -69,76 +76,7 @@ def directions(naz=NAZ):
     return np.sin(a), np.cos(a)                # (east, north) per azimuth
 
 
-# ---------------------------------------------------------------- electron: ray march, CUDA kernel
-KERNEL = r"""
-extern "C" __global__ void march(const double* z, const int H, const int W, const int* cr, const int* cc,
-    const int ncell, const double* ux, const double* uy, const int naz, double* best, int* reach,
-    int* at, unsigned long long* samples) {
-  int t = blockDim.x * blockIdx.x + threadIdx.x;
-  if (t >= ncell * naz) return;
-  int k = t / naz, a = t % naz;
-  double x0 = cc[k], y0 = cr[k], z0 = z[cr[k] * W + cc[k]], m = -1.0e300;
-  int d = 1, last = 0, where = 0; unsigned long long n = 0;
-  for (;; d++) {
-    double x = x0 + d * ux[a], y = y0 + d * uy[a];
-    if (x < 0.0 || y < 0.0 || x > W - 1 || y > H - 1) break;
-    int i = (int)floor(x), j = (int)floor(y);
-    if (i > W - 2) i = W - 2; if (j > H - 2) j = H - 2;
-    double fx = x - i, fy = y - j;
-    double h = (1 - fx) * (1 - fy) * z[j * W + i] + fx * (1 - fy) * z[j * W + i + 1]
-             + (1 - fx) * fy * z[(j + 1) * W + i] + fx * fy * z[(j + 1) * W + i + 1];
-    n++; last = d;
-    if (isnan(h)) continue;
-    double s = (h - z0) / d;
-    if (s > m) { m = s; where = d; }
-  }
-  best[t] = m; reach[t] = last; at[t] = where;
-  atomicAdd(samples, n);
-}
-"""
-_kernel = None
-
-
-def electron_gpu(z, cr, cc, naz=NAZ):
-    global _kernel
-    if _kernel is None:
-        _kernel = cp.RawKernel(KERNEL, "march", options=("--fmad=false",))
-    H, W = z.shape
-    ux, uy = directions(naz)
-    zd = cp.asarray(z, cp.float64)
-    best = cp.empty(len(cr) * naz, cp.float64); reach = cp.empty(len(cr) * naz, cp.int32)
-    samples = cp.zeros(1, cp.uint64); at = cp.empty(len(cr) * naz, cp.int32)
-    n = len(cr) * naz; block = 256
-    _kernel(((n + block - 1) // block,), (block,), (zd, np.int32(H), np.int32(W), cp.asarray(cr, cp.int32),
-            cp.asarray(cc, cp.int32), np.int32(len(cr)), cp.asarray(ux), cp.asarray(uy), np.int32(naz),
-            best, reach, at, samples))
-    return best.reshape(-1, naz), reach.reshape(-1, naz), at.reshape(-1, naz), int(samples.get()[0])
-
-
-def electron_cpu(z, r, c, naz=NAZ):
-    """One cell, all azimuths, on the CPU: bilinear as two lerps (x, then y)."""
-    H, W = z.shape
-    ux, uy = directions(naz)
-    best = np.full(naz, -1.0e300); reach = np.zeros(naz, np.int64); at = np.zeros(naz, np.int64)
-    dmax = int(np.ceil(np.hypot(H, W))) + 2
-    d = np.arange(1, dmax, dtype=np.float64)
-    for a in range(naz):
-        x = c + d * ux[a]; y = r + d * uy[a]
-        inside = (x >= 0) & (y >= 0) & (x <= W - 1) & (y <= H - 1)
-        stop = np.argmin(inside) if not inside.all() else len(d)
-        x, y, dd = x[:stop], y[:stop], d[:stop]
-        if not len(dd):
-            continue
-        i = np.minimum(np.floor(x).astype(np.int64), W - 2); j = np.minimum(np.floor(y).astype(np.int64), H - 2)
-        fx, fy = x - i, y - j
-        lo = z[j, i] + (z[j, i + 1] - z[j, i]) * fx
-        hi = z[j + 1, i] + (z[j + 1, i + 1] - z[j + 1, i]) * fx
-        h = lo + (hi - lo) * fy
-        s = (h - z[r, c]) / dd
-        if np.isfinite(s).any():
-            m = int(np.nanargmax(s)); best[a] = s[m]; at[a] = int(dd[m])
-        reach[a] = int(dd[-1])
-    return best, reach, at
+# ---------------------------------------------------------------- electron: horizon_march.py
 
 
 # ---------------------------------------------------------------- positron: max pyramid, distance bands
@@ -164,8 +102,9 @@ def pyramid_blocks(z, levels):
 
 
 def bands(dmax):
-    """(level, distances) for the positron: 1.5..31.5 m on level 0, then [16*2^k, 32*2^k) every 2^k m."""
-    out = [(0, np.arange(1.5, BAND0, dtype=np.float64))]
+    """(level, distances) for the positron: 0.15..31.95 m every 0.1 m on level 0, then [16*2^k, 32*2^k)
+    every 2^k m."""
+    out = [(0, (np.arange(1, NEAR_N) + 0.5) * NEAR_DS_M)]
     k = 1
     while BAND0 // 2 * (1 << k) <= dmax:
         s = 1 << k
@@ -267,7 +206,9 @@ def write_tiles(out_dir, q, oe, on, site_name):
     index = dict(format="ghz1", crs="EPSG:27700", site=dict(name=site_name, origin_e=int(oe), origin_n=int(on)),
                  tile_m=TILE_M, cell_m=CELL_M, azimuths=NAZ, azimuth="clockwise from grid north, k * 11.25 degrees",
                  unit="centidegrees", nodata=NODATA, min_reach_m=MIN_REACH_M, source="bare-earth DTM, 1 m",
-                 tiles=entries, generated_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+                 caveat="computed from terrain only; hedges, trees and buildings cast no shadow",
+                 near_field=f"exact maximum on the bilinear surface out to {NEAR_M} m, then a sample every 1 m",
+                 **ea_notice(), tiles=entries, generated_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
     with open(os.path.join(out_dir, INDEX), "w", encoding="utf-8", newline="\n") as f:
         json.dump(index, f, indent=1)
     return index
@@ -311,7 +252,7 @@ def run(grid, oe=0, on=0, use_gpu=True, witness_cells=1024, seed=20260926, cell=
     hot = np.argsort(counts.ravel())[::-1][:8]
     rec = dict(
         device=device, cells=len(cr), cell_m=cell, azimuths=NAZ, pairs=int(photon.size), comparable=nok, tol_deg=TOL_DEG,
-        electron=dict(method="ray march, 1 m steps, bilinear", samples=e_n,
+        electron=dict(method=f"ray march, exact in-cell maximum to {NEAR_M} m, then 1 m bilinear steps", samples=e_n,
                       mean_deg=round(float(e_deg[ok].mean()), 4) if nok else None,
                       max_deg=round(float(e_deg[ok].max()), 3) if nok else None),
         positron=dict(method="max pyramid, distance bands", samples=p_n,
@@ -352,7 +293,7 @@ def main(argv=None):
     ap.add_argument("--cpu", action="store_true")
     ap.add_argument("--witness", type=int, default=1024, help="cells re-done on the CPU")
     a = ap.parse_args(argv)
-    meta = json.load(open(os.path.join(a.site, "source.json")))
+    meta = json.load(open(os.path.join(a.site, "source.json"), encoding="utf-8"))
     grid = np.load(os.path.join(a.site, "source.npy"))
     if meta.get("rows", "south-to-north") != "south-to-north" or float(meta.get("spacing_m", 1)) != 1.0:
         raise SystemExit("source must be 1 m with rows running south to north")

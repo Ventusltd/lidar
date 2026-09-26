@@ -127,7 +127,7 @@ def test_tiles_roundtrip_index_and_caveat(tmp):
     b = vs.decode(open(tmp / "tiles/1_0.gvs", "rb").read())[1]
     assert (a[:, -1] == b[:, 0]).all()
     canopy = vs.write_tiles(str(tmp / "c"), ce, 0, 0, 2, "synth", 1.7, 3.0, [], canopy=True)
-    assert canopy["caveat"] is None and canopy["curvature"]["k"] == 0.13
+    assert canopy["caveat"] == vs.CAVEAT_CANOPY and canopy["curvature"]["k"] == 0.13
 
 
 def test_decode_refuses_damage():

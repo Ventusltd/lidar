@@ -9,7 +9,10 @@ Segments are chained into polylines inside each 256 m tile (a line that leaves a
 edge, at the same crossing the neighbour starts from), then simplified by Douglas-Peucker (Douglas and
 Peucker, 1973) with a tolerance of DP_TOL_M = 0.25 m, a quarter of the grid spacing and well inside the
 horizontal uncertainty that the survey's +-15 cm vertical RMSE implies on gentle ground. The simplified
-lines are re-checked: every dropped vertex must lie within the tolerance of its span (max_dp_dev_m).
+lines are re-checked: every dropped vertex must lie within the tolerance of its span (max_dp_dev_m). The
+tolerance is measured from the traced line, not the true DTM contour (see TOL_BASIS). Simplifying each line
+alone can make lines cross, so each tile is then checked as stored and dropped vertices are put back until no
+two lines touch or cross (contour_topo.py); any left are counted as photons.
 Vertices are then stored in whole centimetres from the tile's south-west corner (a further <= 7.1 mm).
 
 Tile file (ggc1 JSON, LF): {"format": "ggc1", "e0", "n0", "tile_m": 256, "unit_m": 0.01, "dp_tol_m",
@@ -21,13 +24,18 @@ Index contour-tiles.json lists every tile with its sha256; the receipt contour_r
 import argparse, hashlib, json, os, sys, time
 from datetime import datetime, timezone
 import numpy as np
+from cut_tiles import ea_notice, TERRAIN_ONLY  # noqa: F401
 import contour_pair as cpair
+import contour_topo as topo_mod
 
 cp = cpair.cp
 TILE_M = 256
 STEP_M = 0.5
 INTERVALS = (0.5, 1.0, 5.0)
 DP_TOL_M = 0.25
+TOL_BASIS = ("dp_tol_m is the distance from the traced marching-squares line, not from the true contour of the "
+             "DTM; in cells near saddles the traced chords themselves depart from it by up to about 0.3 m, so a "
+             "stored line can lie up to about 0.55 m from the true contour (tester 3 measured 0.553 m on open-land-01)")
 INDEX = "contour-tiles.json"
 RECEIPT = "contour_receipt.json"
 
@@ -89,10 +97,27 @@ def _dist(p, a, b):
 
 def simplify(p, tol):
     """Douglas-Peucker. Returns the kept points and the largest distance of a dropped vertex from its span."""
+    keep = simplify_mask(p, tol)
+    return p[keep], span_dev(p, keep)
+
+
+def span_dev(p, keep):
+    """Independent re-check of every span: the largest distance of a dropped vertex from its span."""
+    kept = np.nonzero(keep)[0]
+    dev = 0.0
+    for i, j in zip(kept[:-1], kept[1:]):
+        if j > i + 1:
+            dev = max(dev, float(_dist(p[i + 1:j], p[i], p[j]).max()))
+    return dev
+
+
+def simplify_mask(p, tol):
+    """Douglas-Peucker keep mask."""
     m = len(p)
-    if m < 3:
-        return p, 0.0
     keep = np.zeros(m, bool); keep[0] = keep[-1] = True
+    if m < 3:
+        keep[:] = True
+        return keep
     stack = [(0, m - 1)]
     while stack:
         i, j = stack.pop()
@@ -103,12 +128,7 @@ def simplify(p, tol):
         if d[k] > tol:
             keep[i + 1 + k] = True
             stack += [(i, i + 1 + k), (i + 1 + k, j)]
-    kept = np.nonzero(keep)[0]
-    dev = 0.0
-    for i, j in zip(kept[:-1], kept[1:]):          # independent re-check of every span
-        if j > i + 1:
-            dev = max(dev, float(_dist(p[i + 1:j], p[i], p[j]).max()))
-    return p[keep], dev
+    return keep
 
 
 # ---------------------------------------------------------------- the run
@@ -130,7 +150,7 @@ def run(grid, sp=1.0, use_gpu=True, witness_on=True, tol=DP_TOL_M):
     tot = dict(segments_e=0, segments_p=0, only_e=0, only_p=0, saddles_e=0, saddles_p=0, odd_cells=0,
                crossings=0, unmatched_ends=0, max_dxy=0.0)
     wit = dict(segments=0, only_w=0, only_e=0, saddles=0, unmatched_ends=0, max_dxy=0.0, photons=0)
-    worst_levels, tiles = [], {}
+    worst_levels, tiles, raw = [], {}, {}
     pts_in = pts_out = 0
     max_dev = 0.0
     t_pair = t_wit = t_host = 0.0
@@ -157,11 +177,19 @@ def run(grid, sp=1.0, use_gpu=True, witness_on=True, tol=DP_TOL_M):
             tile = (rr // TILE_M) * ntx + cc // TILE_M
             for t, pts in chain(tile, seg[2], seg[3], seg[4], seg[5], seg[6], seg[7], ne):
                 p = np.asarray(pts, np.float64) * sp
-                q, dev = simplify(p, tol)
-                pts_in += len(p); pts_out += len(q); max_dev = max(max_dev, dev)
-                tiles.setdefault((t % ntx, t // ntx), {}).setdefault(k, []).append(q)
+                raw.setdefault((t % ntx, t // ntx), []).append((k, p, simplify_mask(p, tol)))
             t_host += time.perf_counter() - a
-    photons = tot["only_e"] + tot["only_p"] + tot["unmatched_ends"] + tot["odd_cells"] + int(tot["max_dxy"] > cpair.TOL_XY)
+    a = time.perf_counter()
+    topo = dict(found=0, left=0, touch=0, restored=0)
+    for (tx, ty), got in raw.items():                  # topology: no two stored lines may touch or cross
+        f, l_, u_, r_ = topo_mod.untangle([(p, keep) for _, p, keep in got], tx * TILE_M * sp, ty * TILE_M * sp)
+        topo["found"] += f; topo["left"] += l_; topo["touch"] += u_; topo["restored"] += r_
+        for k, p, keep in got:
+            pts_in += len(p); pts_out += int(keep.sum()); max_dev = max(max_dev, span_dev(p, keep))
+            tiles.setdefault((tx, ty), {}).setdefault(k, []).append(p[keep])
+    t_host += time.perf_counter() - a
+    photons = (tot["only_e"] + tot["only_p"] + tot["unmatched_ends"] + tot["odd_cells"] + int(tot["max_dxy"] > cpair.TOL_XY)
+               + topo["left"])
     rec = dict(device=device, nodes=int(grid.size), levels=len(ks),
                level_range_m=[ks[0] * STEP_M, ks[-1] * STEP_M] if ks else None, step_m=STEP_M,
                electron=dict(method="marching squares, corner-case table, weighted in-cell crossing",
@@ -171,8 +199,11 @@ def run(grid, sp=1.0, use_gpu=True, witness_on=True, tol=DP_TOL_M):
                photons=photons, only_electron=tot["only_e"], only_positron=tot["only_p"],
                odd_cells=tot["odd_cells"], unmatched_ends=tot["unmatched_ends"], max_dxy_grid=tot["max_dxy"],
                tol_xy_grid=cpair.TOL_XY, photon_levels=worst_levels[:12],
-               simplify=dict(method="Douglas-Peucker", tol_m=tol, points_in=pts_in, points_out=pts_out,
-                             max_dp_dev_m=round(max_dev, 6), within_tol=bool(max_dev <= tol + 1e-12)),
+               simplify=dict(method="Douglas-Peucker, then dropped vertices put back until no stored lines cross",
+                             tol_m=tol, tol_basis=TOL_BASIS, points_in=pts_in, points_out=pts_out,
+                             max_dp_dev_m=round(max_dev, 6), within_tol=bool(max_dev <= tol + 1e-12),
+                             crossings_found=topo["found"], vertices_restored=topo["restored"],
+                             crossings=topo["left"], rounding_touches=topo["touch"]),
                timing_s=dict(pair=round(t_pair, 3), witness=round(t_wit, 3), chain_simplify=round(t_host, 3)))
     if witness_on:
         rec["witness"] = wit
@@ -219,8 +250,8 @@ def write_tiles(out_dir, tiles, oe, on, site_name, sp=1.0, tol=DP_TOL_M):
                                          for iv, v in st.items()}))
     index = dict(format="ggc1", crs="EPSG:27700", site=dict(name=site_name, origin_e=int(oe), origin_n=int(on)),
                  tile_m=TILE_M, step_m=STEP_M, intervals_m=list(INTERVALS), index_every_m=5.0,
-                 dp_tol_m=tol, unit_m=0.01, heights="metres above Ordnance Datum Newlyn",
-                 tiles=entries, generated_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+                 dp_tol_m=tol, dp_tol_basis=TOL_BASIS, topology="no two stored lines touch or cross", unit_m=0.01, heights="metres above Ordnance Datum Newlyn",
+                 caveat=TERRAIN_ONLY, **ea_notice(), tiles=entries, generated_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
     with open(os.path.join(out_dir, INDEX), "w", encoding="utf-8", newline="\n") as f:
         json.dump(index, f, indent=1)
         f.write("\n")
@@ -234,7 +265,7 @@ def main(argv=None):
     ap.add_argument("--cpu", action="store_true")
     ap.add_argument("--no-witness", action="store_true")
     a = ap.parse_args(argv)
-    meta = json.load(open(os.path.join(a.site, "source.json")))
+    meta = json.load(open(os.path.join(a.site, "source.json"), encoding="utf-8"))
     grid = np.load(os.path.join(a.site, "source.npy"))
     if meta.get("rows", "south-to-north") != "south-to-north":
         raise SystemExit("source rows must run south to north")
@@ -245,7 +276,7 @@ def main(argv=None):
     here = os.path.dirname(os.path.abspath(__file__))
     rec.update(tiles=len(index["tiles"]), tile_bytes=sum(t["bytes"] for t in index["tiles"]),
                script_sha256={n: hashlib.sha256(open(os.path.join(here, n), "rb").read()).hexdigest()
-                              for n in ("contour_tiles.py", "contour_pair.py")},
+                              for n in ("contour_tiles.py", "contour_pair.py", "contour_topo.py")},
                index_sha256=hashlib.sha256(open(os.path.join(out, INDEX), "rb").read()).hexdigest())
     with open(os.path.join(out, RECEIPT), "w", encoding="utf-8", newline="\n") as f:
         json.dump(rec, f, indent=1)

@@ -320,7 +320,7 @@ def main(argv=None):
     ap.add_argument("--out", help="default SITE/canopy")
     ap.add_argument("--cpu", action="store_true")
     a = ap.parse_args(argv)
-    meta = json.load(open(os.path.join(a.site, "source.json")))
+    meta = json.load(open(os.path.join(a.site, "source.json"), encoding="utf-8"))
     dtm = np.load(os.path.join(a.site, "source.npy"))
     if meta.get("rows", "south-to-north") != "south-to-north":
         raise SystemExit("source rows must run south to north")
