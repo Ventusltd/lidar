@@ -40,8 +40,10 @@ ATTRIBUTION = ("© Environment Agency copyright and/or database right "
 assert HEADER_BYTES == 32
 
 
-def encode_tile(heights, origin_e, origin_n):
+def encode_tile(heights, origin_e, origin_n, spacing_mm=SPACING_MM):
     """Encode a (257, 257) south-up float array (NaN = nodata) to bytes.
+
+    spacing_mm is written to the header as is (1000 for EA 1 m tiles).
 
     Returns (blob, info) with info = dict(min_m, max_m, nodata).
     """
@@ -63,7 +65,7 @@ def encode_tile(heights, origin_e, origin_n):
         max_m = (base_cm + max_q) / 100.0
     else:
         base_cm, min_q, max_q, min_m, max_m = 0, 0, 0, None, None
-    head = HEADER.pack(MAGIC, VERSION, SAMPLES, SPACING_MM, 0,
+    head = HEADER.pack(MAGIC, VERSION, SAMPLES, int(spacing_mm), 0,
                        int(origin_e), int(origin_n), base_cm,
                        min_q, max_q, nodata)
     blob = head + q.astype("<u2").tobytes()

@@ -15,6 +15,17 @@ Wherever they are shown or redistributed, carry this attribution:
 
 Source: Environment Agency, LIDAR Composite Digital Terrain Model 1 m, via the Defra Data Services Platform WCS.
 
+## Terrain tiles derived from Copernicus DEM GLO-30
+
+Tiles built by `src/copernicus.py` are adapted Copernicus data under the Copernicus DEM licence
+(https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM).
+Wherever they are shown or redistributed, carry this notice:
+
+> produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved
+
+Citation: https://doi.org/10.5270/ESA-c5d3d65. Label them as a 30 m surface model with EGM2008 heights, and do
+not put them in the same tile set as EA-derived tiles without both notices.
+
 ## Our own written material
 
 Documentation, receipts and reports written for this repository are licensed under

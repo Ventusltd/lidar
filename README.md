@@ -44,6 +44,29 @@ python src/canopy_tiles.py --site E:/lidar-out/open-land-01   # after fetch_box(
 - `src/contour_pair.py`: GPU pair for contours (marching squares against row and column crossings) with a CPU witness.
 - `src/canopy_tiles.py`: canopy height (first-return DSM minus DTM), vegetation or structure by two methods on the GPU, `.gcn` tiles.
 - `src/canopy_lines.py`: hedgerow lines from the canopy mask by opening and thinning, `hedges.json`.
+- `src/copernicus.py`: Copernicus GLO-30 fallback outside EA coverage, byte-range COG fetch, 32 m `.ght` tiles on BNG.
+- `src/copernicus_pair.py`: GPU pair of the Copernicus tiles against the EA DTM averaged over 33 m blocks.
+- `src/osgb.py`: WGS84 to British National Grid (OS Transverse Mercator + 7-parameter Helmert, about 3.5 m).
+
+## Outside EA coverage: Copernicus DEM GLO-30
+
+`src/copernicus.py` builds `.ght` tiles from the Copernicus DEM GLO-30 where there is no EA LiDAR. It fetches
+only the 1024 × 1024 blocks a box needs, by HTTP byte range from the public bucket (cached under
+`E:\lidar-cache\copernicus\`), resamples to British National Grid nodes (OS Transverse Mercator + 7-parameter
+Helmert, about 3.5 m, `src/osgb.py`) by bilinear interpolation, and writes tiles at **32 m** spacing (257 samples,
+8,192 m a tile; never finer than 30 m, because the source holds nothing finer).
+
+It is a **surface model** (trees and roofs included), heights are **EGM2008**, not ODN, and the stated absolute
+vertical accuracy is **< 4 m LE90**. `tiles.json` records all three.
+
+```
+python src/copernicus.py --name open-land-01 --e 400128 --n 209920 --size 2048
+E:/swarm/gpu-bench/venv/Scripts/python.exe src/copernicus_pair.py --ea E:/lidar-out/open-land-01 --cop E:/lidar-out/open-land-01-copernicus
+```
+
+The pair compares the tiles with the EA 1 m DTM averaged over 33 m blocks. On open-land-01 (3,969 nodes):
+median −0.22 m, P25 −0.58 m, P75 +2.44 m, P95 +19.9 m, 20 % of nodes more than 5 m above bare earth (woodland and
+hedges), none more than 2 m below. Open ground agrees to within a metre; tree cover does not.
 
 ## Tile format `.ght`
 
