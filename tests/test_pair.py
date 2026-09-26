@@ -3,7 +3,7 @@
 A clean set of tiles must annihilate (zero photons); each kind of damage must show up as
 photons in the right channel and never be suppressed.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe -m pytest lidar/tests/test_pair.py -q
+    python -m pytest lidar/tests/test_pair.py -q
 """
 import hashlib, inspect, json, os, pathlib, struct, sys, tempfile, traceback
 import numpy as np

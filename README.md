@@ -14,12 +14,77 @@ Free UK LiDAR turned into small, checked 3D terrain tiles for a lightweight brow
    height against the source, heights between samples two ways, and shared tile edges. Disagreements are
    counted, never suppressed, and written to a seeded receipt.
 5. **Derive** slope and aspect tiles (`src/slope_tiles.py`) and earthworks volumes for trenches and platforms
-   (`src/earthworks_pair.py`), each checked the same way.
+   (`src/earthworks_pair.py`), and terrain horizon tiles (`src/horizon_tiles.py`: the horizon angle in 32 azimuths
+   for every 4 m cell, for terrain shadow at any sun position), each checked the same way.
+6. **See** which ground a 3 m target could be seen from, by people (eye 1.7 m) on roads and footpaths
+   (`src/viewshed.py`): an exact sight line per cell paired against a radial sweep on the GPU (Franklin and
+   Ray, 1994), Earth curvature and refraction included, CPU witness in `src/viewshed_cpu.py`, `.gvs` tiles
+   with a hashed `visibility-tiles.json`. Bare earth only: hedges, trees and buildings are not included.
+7. **Trace** contour lines at 0.5 m, 1 m and 5 m (`src/contour_tiles.py`, pair in `src/contour_pair.py`):
+   marching squares against row-and-column crossings on the GPU, a CPU witness, Douglas-Peucker at 0.25 m,
+   per-tile `ggc1` JSON indexed in `contour-tiles.json` with SHA-256s.
+8. **Canopy** (`src/canopy_tiles.py`, `src/canopy_lines.py`): canopy height = first-return DSM minus DTM, tall
+   cells classed as vegetation or structure by two independent methods on the GPU (returns: first minus last;
+   shape: roughness about a plane), a CPU witness, hedgerow lines by opening and thinning. Only cells both methods
+   call vegetation are published with a height; structures and disagreements are hidden, never drawn.
 
 ```
 python src/build_site.py --name open-land-01 --e 400000 --n 210000 --size 2048
-python src/pair_gpu.py --tiles E:/lidar-out/open-land-01
+python src/pair_gpu.py --tiles $LIDAR_OUT/open-land-01
+python src/canopy_tiles.py --site $LIDAR_OUT/open-land-01   # after fetch_box(product="fzdsm1m"/"lzdsm1m")
 ```
+
+## Local folders
+
+Nothing is written into the repository's tracked files. Two environment variables set where data goes; each
+script also takes the folder on the command line (`--tiles`, `--site`, `--cache`, `--out`):
+
+- `LIDAR_CACHE`: raw GeoTIFF and Copernicus byte-range cache. Default `.local/lidar-cache`.
+- `LIDAR_OUT`: built site folders (`<LIDAR_OUT>/<name>/tiles.json` and tiles). Default `.local/lidar-out`.
+
+Point them at your own data drive, for example `export LIDAR_CACHE=/data/lidar-cache LIDAR_OUT=/data/lidar-out`
+(or `setx` on Windows). `.local/` is git-ignored. The examples use `python` for any interpreter with NumPy and
+CuPy; the GPU scripts need CuPy.
+
+## Scripts added on the GPU lane
+
+- `src/piles_sweep.py`: solar table pile reveal on real ground, direct source against decoded tiles on the GPU.
+- `src/horizon_tiles.py`: terrain horizon angle in 32 azimuths per 4 m cell, GPU ray march paired against a max-pyramid, CPU witness.
+- `src/viewshed.py`: where a 3 m target is visible from roads and footpaths, sight lines paired against a radial sweep on the GPU.
+- `src/viewshed_cpu.py`: CPU witness for the viewshed pair.
+- `src/contour_tiles.py`: contour lines at 0.5, 1 and 5 m, simplified by Douglas-Peucker at 0.25 m, hashed `contour-tiles.json`.
+- `src/contour_pair.py`: GPU pair for contours (marching squares against row and column crossings) with a CPU witness.
+- `src/canopy_tiles.py`: canopy height (first-return DSM minus DTM), vegetation or structure by two methods on the GPU, `.gcn` tiles.
+- `src/canopy_lines.py`: hedgerow lines from the canopy mask by opening and thinning, `hedges.json`.
+- `src/copernicus.py`: Copernicus GLO-30 fallback outside EA coverage, byte-range COG fetch, 32 m `.ght` tiles on BNG.
+- `src/copernicus_pair.py`: GPU pair of the Copernicus tiles against the EA DTM averaged over 33 m blocks.
+- `src/osgb.py`: WGS84 to British National Grid (OS Transverse Mercator + 7-parameter Helmert, about 3.5 m).
+- `src/flow_tiles.py`: where water goes and sits: depression fill, D8 against D-infinity routing on the GPU, `.gfl` tiles.
+- `src/flow_route.py`: flow routing core (CUDA kernels and the CPU priority-flood witness) used by `flow_tiles.py`.
+- `src/cable_geom.py`: ground, bend rule and filleted plan geometry for `cable_sweep.py` (split out to stay under 400 lines).
+- `src/horizon_march.py`: the horizon ray march (GPU and CPU witness), exact on the bilinear surface out to 32 m.
+- `src/contour_topo.py`: keeps simplified contours from touching or crossing, per tile, by putting dropped vertices back.
+- `src/flow_hollows.py`: ponding hollows of the fill, `flow-hollows.json` and per-tile `.gph` depth masks.
+
+## Outside EA coverage: Copernicus DEM GLO-30
+
+`src/copernicus.py` builds `.ght` tiles from the Copernicus DEM GLO-30 where there is no EA LiDAR. It fetches
+only the 1024 × 1024 blocks a box needs, by HTTP byte range from the public bucket (cached under
+`$LIDAR_CACHE/copernicus/`), resamples to British National Grid nodes (OS Transverse Mercator + 7-parameter
+Helmert, about 3.5 m, `src/osgb.py`) by bilinear interpolation, and writes tiles at **32 m** spacing (257 samples,
+8,192 m a tile; never finer than 30 m, because the source holds nothing finer).
+
+It is a **surface model** (trees and roofs included), heights are **EGM2008**, not ODN, and the stated absolute
+vertical accuracy is **< 4 m LE90**. `tiles.json` records all three.
+
+```
+python src/copernicus.py --name open-land-01 --e 400128 --n 209920 --size 2048
+python src/copernicus_pair.py --ea $LIDAR_OUT/open-land-01 --cop $LIDAR_OUT/open-land-01-copernicus
+```
+
+The pair compares the tiles with the EA 1 m DTM averaged over 33 m blocks. On open-land-01 (3,969 nodes):
+median −0.22 m, P25 −0.58 m, P75 +2.44 m, P95 +19.9 m, 20 % of nodes more than 5 m above bare earth (woodland and
+hedges), none more than 2 m below. Open ground agrees to within a metre; tree cover does not.
 
 ## Tile format `.ght`
 

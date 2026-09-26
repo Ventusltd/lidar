@@ -27,7 +27,7 @@ The receipt (pair_receipt.json) lands next to tiles.json with the seed, counts, 
 16 check points (x, y, h) the browser can re-test, the script sha256 and the device name. If
 tiles.json exists, the receipt's sha256 is written into it under "receipt".
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe src/pair_gpu.py --tiles DIR [--source NPY]
+    python src/pair_gpu.py --tiles DIR [--source NPY]
     ... --tiles DIR --synth        write a synthetic hilly source and its tiles first (dev only)
 """
 import argparse, glob, hashlib, json, math, os, struct, sys, time
@@ -111,7 +111,7 @@ def synth(out, tiles_e=2, tiles_n=2, spacing_m=1.0, oe=400000, on=300000, seed=S
 def load_source(npy):
     grid = np.load(npy).astype(np.float64)
     meta_path = os.path.splitext(npy)[0] + ".json"
-    meta = json.load(open(meta_path)) if os.path.exists(meta_path) else {}
+    meta = json.load(open(meta_path, encoding="utf-8")) if os.path.exists(meta_path) else {}
     pick = lambda *ks: next((meta[k] for k in ks if k in meta), None)
     oe = pick("origin_e_m", "origin_e", "sw_e", "x0", "west")
     on = pick("origin_n_m", "origin_n", "sw_n", "y0", "south")
@@ -334,7 +334,7 @@ def write_receipt(tiles_dir, receipt):
     sha = hashlib.sha256(body).hexdigest()
     tj = os.path.join(tiles_dir, "tiles.json")
     if os.path.exists(tj):
-        meta = json.load(open(tj))
+        meta = json.load(open(tj, encoding="utf-8"))
         meta["receipt"] = sha
         with open(tj, "w", encoding="utf-8", newline="\n") as f:
             json.dump(meta, f, indent=1)

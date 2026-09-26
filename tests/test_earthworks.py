@@ -4,7 +4,7 @@ On a plane the floor (centreline ground less d) makes cut = d + c t across the t
 straight trench holds exactly L w d, and a bend of curvature kappa holds, by Pappus,
 L (w d - kappa c w^3 / 12). Both channels must hit the known volume and each other.
 
-    E:/swarm/gpu-bench/venv/Scripts/python.exe lidar/tests/test_earthworks.py
+    python lidar/tests/test_earthworks.py
 """
 import inspect, json, math, os, pathlib, sys, tempfile, traceback
 import numpy as np
