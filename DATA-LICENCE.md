@@ -14,6 +14,16 @@ Wherever they are shown or redistributed, carry this attribution:
 
 Source: Environment Agency, LIDAR Composite Digital Terrain Model 1 m, via the Defra Data Services Platform WCS.
 
+## Sun climate and sun-cell tiles
+
+`sun/sun-climate.json` and `sun/tmy-hourly.bin` are derived from PVGIS (European Commission, Joint Research Centre),
+whose usage conditions say "The information provided by PVGIS is free and there are no restrictions on its use."
+Credit it as: Solar radiation: PVGIS 5.3 typical meteorological year, PVGIS-SARAH3 satellite radiation and ERA5
+meteorology, European Commission Joint Research Centre. Not endorsed by the European Commission.
+
+`sun/cells/*.gsc` and `sun-cells.json` combine that climate with the EA LiDAR horizon, so they are published under
+OGL v3.0 and carry both the PVGIS credit and the Environment Agency line above.
+
 ## Our own written material
 
 Documentation, receipts and reports written for this repository are licensed under

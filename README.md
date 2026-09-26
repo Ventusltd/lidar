@@ -16,6 +16,11 @@ Free UK LiDAR turned into small, checked 3D terrain tiles for a lightweight brow
 5. **Derive** slope and aspect tiles (`src/slope_tiles.py`) and earthworks volumes for trenches and platforms
    (`src/earthworks_pair.py`), and terrain horizon tiles (`src/horizon_tiles.py`: the horizon angle in 32 azimuths
    for every 4 m cell, for terrain shadow at any sun position), each checked the same way.
+6. **Sun**: `src/sun_data.py` fetches a PVGIS typical year (SARAH-3 satellite radiation, cloud included) once per
+   site centre and writes `sun/sun-climate.json` (monthly totals, profiles, licence) and `sun/tmy-hourly.bin`;
+   `src/sun_cells.py` applies the horizon tiles to every 4 m cell on the GPU for monthly beam hours, sunshine hours
+   and direct irradiation, clear sky and cloud-weighted (`.gsc` tiles, hourly sun path paired with a sub-hourly
+   sky-map integral, CPU witness).
 
 ```
 python src/build_site.py --name open-land-01 --e 400000 --n 210000 --size 2048
