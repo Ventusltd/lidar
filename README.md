@@ -15,6 +15,10 @@ Free UK LiDAR turned into small, checked 3D terrain tiles for a lightweight brow
    counted, never suppressed, and written to a seeded receipt.
 5. **Derive** slope and aspect tiles (`src/slope_tiles.py`) and earthworks volumes for trenches and platforms
    (`src/earthworks_pair.py`), each checked the same way.
+6. **See** which ground a 3 m target could be seen from, by people (eye 1.7 m) on roads and footpaths
+   (`src/viewshed.py`): an exact sight line per cell paired against a radial sweep on the GPU (Franklin and
+   Ray, 1994), Earth curvature and refraction included, CPU witness in `src/viewshed_cpu.py`, `.gvs` tiles
+   with a hashed `visibility-tiles.json`. Bare earth only: hedges, trees and buildings are not included.
 
 ```
 python src/build_site.py --name open-land-01 --e 400000 --n 210000 --size 2048
