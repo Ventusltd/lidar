@@ -53,6 +53,8 @@ FRAC_A = 0.35
 ROUGH_M = 0.3        # m RMS about a 3x3 plane
 FRAC_B = 0.5
 DATE_MISMATCH_M = -0.5
+MAST_H, MAST_TALL, MAST_R, MAST_FILL, MAST_GROW = 25.0, 15.0, 10, 0.1, 6   # see masts_and_specks
+SPECK_H, SPECK_N = 8.0, 3
 EAVES_M = 2          # m: vegetation this close to a structure is hidden as uncertain
 TOL_WIT = 1e-9
 STEP_MM = 200
@@ -64,9 +66,12 @@ assert HEADER.size == 32
 INDEX, RECEIPT, HEDGES = "canopy-tiles.json", "canopy_receipt.json", "hedges.json"
 ATTRIBUTION = "© Environment Agency copyright and/or database right 2022. All rights reserved."
 SOURCES = {
-    "dtm": "https://www.data.gov.uk/dataset/01b3ee39-da3f-47b6-83da-dc98e73a461f",
-    "first_return_dsm": "https://www.data.gov.uk/dataset/92534f24-0b92-4b28-9986-347cf6678b39",
-    "last_return_dsm": "https://www.data.gov.uk/dataset/cf3f1137-c12b-44a1-a835-e80fe4a60b92",
+    "dtm": "https://www.data.gov.uk/dataset/01b3ee39-da3f-47b6-83da-dc98e73a461f/"
+           "lidar-composite-digital-terrain-model-dtm-1m",
+    "first_return_dsm": "https://www.data.gov.uk/dataset/92534f24-0b92-4b28-9986-347cf6678b39/"
+                        "lidar-composite-first-return-digital-surface-model-fz-dsm-1m",
+    "last_return_dsm": "https://www.data.gov.uk/dataset/cf3f1137-c12b-44a1-a835-e80fe4a60b92/"
+                       "lidar-composite-digital-surface-model-dsm-1m",
 }
 
 
@@ -128,6 +133,31 @@ def witness(dtm, fz, lz):
                 veg_a=tall & (na >= FRAC_A * nt), veg_b=tall & (nb >= FRAC_B * nt))
 
 
+def boxsum(m, r):
+    """(2r+1)-square window sums of a 0/1 grid (NumPy, integral image, zero outside)."""
+    k = 2 * r + 1
+    s = np.pad(m.astype(np.int32), ((r + 1, r), (r + 1, r))).cumsum(0).cumsum(1)
+    return s[k:, k:] - s[:-k, k:] - s[k:, :-k] + s[:-k, :-k]
+
+
+def masts_and_specks(veg, tall, chm):
+    """Porous tall structures both methods take for trees, and lone tall returns.
+
+    A lattice tower lets pulses through and is rough, so it passes both tests. What gives it away is
+    that it is tall and thin: around a vegetation cell over MAST_H, fewer than MAST_FILL of the
+    (2*MAST_R+1)^2 window are vegetation over MAST_TALL. Tuned on open-land-01 against the five
+    mapped 400 kV towers (a check only; no mapped data enters the tiles): all five caught, with three
+    other seeds (lone tall trees, most likely), against 68 other places at a 15x15 window and 0.2.
+    Such cells, and vegetation within MAST_GROW of them, become structure (hidden). A speck is vegetation over SPECK_H with at most SPECK_N tall 8-neighbours
+    (a wire, a bird, a crane jib): uncertain.
+    """
+    fill = boxsum(veg & (chm > MAST_TALL), MAST_R) / float((2 * MAST_R + 1) ** 2)
+    seed = veg & (chm > MAST_H) & (fill < MAST_FILL)
+    mast = veg & canopy_lines.dilate(seed, MAST_GROW)
+    speck = veg & ~mast & (chm > SPECK_H) & (boxsum(tall, 1) - tall <= SPECK_N)
+    return mast, speck
+
+
 def to_host(a):
     return cp.asnumpy(a) if cp is not None and isinstance(a, cp.ndarray) else np.asarray(a)
 
@@ -160,10 +190,12 @@ def run(dtm, fz, lz, oe=0, on=0, use_gpu=True, witness_on=True):
     solid = struct | (photon & ~va)
     rim = (va & vb) & canopy_lines.dilate(solid, EAVES_M) & ~canopy_lines.opening(va & vb)
     veg = va & vb & ~rim
+    mast, speck = masts_and_specks(veg, tall, np.where(valid, h["chm"], 0.0))
+    veg &= ~(mast | speck)
     cls = np.full(tall.shape, NODATA, np.uint8)
     cls[valid] = OPEN
-    cls[struct] = STRUCT
-    cls[photon | rim] = UNSURE
+    cls[struct | mast] = STRUCT
+    cls[photon | rim | speck] = UNSURE
     hedge, wide, lines, lstats = canopy_lines.hedgerows(veg, np.where(valid, h["chm"], np.nan), oe, on)
     cls[veg] = TREE
     cls[veg & hedge] = HEDGE
@@ -179,7 +211,8 @@ def run(dtm, fz, lz, oe=0, on=0, use_gpu=True, witness_on=True):
         electron=dict(method="returns: first minus last >= pen_m over a 5x5 share", vegetation=int(va.sum())),
         positron=dict(method="shape: 3x3 plane residual >= rough_m over a 5x5 share", vegetation=int(vb.sum())),
         photons=int(photon.sum()), photon_share_of_tall=round(int(photon.sum()) / nt, 6) if nt else 0.0,
-        rim_demoted=int(rim.sum()), photons_a_says_vegetation=int((photon & va).sum()), photons_b_says_vegetation=int((photon & vb).sum()),
+        rim_demoted=int(rim.sum()), mast_cells=int(mast.sum()), speck_cells=int(speck.sum()),
+        mast_hot_32m_cells=hot_cells(mast, oe, on), photons_a_says_vegetation=int((photon & va).sum()), photons_b_says_vegetation=int((photon & vb).sum()),
         hot_32m_cells=hot_cells(photon, oe, on),
         structure_cells=int((cls == STRUCT).sum()), structure_hot_32m_cells=hot_cells(cls == STRUCT, oe, on),
         date_mismatch_cells=int(date_mm.sum()), share=share, hedgerows=lstats,
@@ -261,7 +294,9 @@ def write_tiles(out_dir, cls, hq, lines, oe, on, site_name, spacing_mm=1000):
     index = dict(format="gcn1", site=dict(name=site_name, origin_e=int(oe), origin_n=int(on)), tile_m=TILE_M,
                  spacing_m=spacing_mm / 1000, height_step_m=STEP_MM / 1000, classes=list(LABELS), shown=[HEDGE, TREE],
                  note=("Vegetation is classified without building footprints: cells both methods call vegetation "
-                       "are shown; structure and uncertain cells are never shown and carry no height."),
+                       "are shown; structure and uncertain cells are never shown and carry no height. The last-"
+                       "return DSM also draws on older time-series surveys, so first and last returns can differ "
+                       "in date; the receipt counts cells where the last return sits above the first."),
                  **common, hedges=dict(file=HEDGES, sha256=hsha, lines=len(lines)), tiles=entries,
                  generated_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
     dump(os.path.join(out_dir, INDEX), index)
