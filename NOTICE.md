@@ -27,6 +27,18 @@ one of those before anyone is invited to reuse the code.
 - Fetch politely: sequential requests with a named User-Agent, as the code does now. OGL does not
   guarantee the service will stay available.
 
+## Environment Agency LIDAR Composite First Return DSM 1m and DSM (last return) 1m (canopy input)
+- Fetched by `fetch_wcs.py` (products `fzdsm1m`, `lzdsm1m`) from the Defra WCS
+  `https://environment.data.gov.uk/spatialdata/lidar-composite-digital-surface-model-first-return-dsm-1m/wcs` and
+  `https://environment.data.gov.uk/spatialdata/lidar-composite-digital-surface-model-last-return-dsm-1m/wcs`.
+- Licence: Open Government Licence v3.0, same attribution as the DTM (checked 26 Sept 2026 on the dataset pages):
+  https://www.data.gov.uk/dataset/92534f24-0b92-4b28-9986-347cf6678b39 (first return) and
+  https://www.data.gov.uk/dataset/cf3f1137-c12b-44a1-a835-e80fe4a60b92 (last return). The service lists no fees and
+  no access constraints.
+- The last-return composite also draws on time-series surveys, so its survey dates can differ from the first-return
+  composite; `canopy_receipt.json` counts cells where last sits above first by more than 0.5 m.
+- **Output**: canopy tiles (`.gcn`), `canopy-tiles.json`, `hedges.json`, under OGL with the attribution above.
+
 ## Planned inputs
 - **Copernicus DEM GLO-30** (fallback outside EA coverage). Adapted-data notice (verbatim):
   "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH

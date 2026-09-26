@@ -23,10 +23,15 @@ Free UK LiDAR turned into small, checked 3D terrain tiles for a lightweight brow
 7. **Trace** contour lines at 0.5 m, 1 m and 5 m (`src/contour_tiles.py`, pair in `src/contour_pair.py`):
    marching squares against row-and-column crossings on the GPU, a CPU witness, Douglas-Peucker at 0.25 m,
    per-tile `ggc1` JSON indexed in `contour-tiles.json` with SHA-256s.
+8. **Canopy** (`src/canopy_tiles.py`, `src/canopy_lines.py`): canopy height = first-return DSM minus DTM, tall
+   cells classed as vegetation or structure by two independent methods on the GPU (returns: first minus last;
+   shape: roughness about a plane), a CPU witness, hedgerow lines by opening and thinning. Only cells both methods
+   call vegetation are published with a height; structures and disagreements are hidden, never drawn.
 
 ```
 python src/build_site.py --name open-land-01 --e 400000 --n 210000 --size 2048
 python src/pair_gpu.py --tiles E:/lidar-out/open-land-01
+python src/canopy_tiles.py --site E:/lidar-out/open-land-01   # after fetch_box(product="fzdsm1m"/"lzdsm1m")
 ```
 
 ## Scripts added on the GPU lane
@@ -37,6 +42,8 @@ python src/pair_gpu.py --tiles E:/lidar-out/open-land-01
 - `src/viewshed_cpu.py`: CPU witness for the viewshed pair.
 - `src/contour_tiles.py`: contour lines at 0.5, 1 and 5 m, simplified by Douglas-Peucker at 0.25 m, hashed `contour-tiles.json`.
 - `src/contour_pair.py`: GPU pair for contours (marching squares against row and column crossings) with a CPU witness.
+- `src/canopy_tiles.py`: canopy height (first-return DSM minus DTM), vegetation or structure by two methods on the GPU, `.gcn` tiles.
+- `src/canopy_lines.py`: hedgerow lines from the canopy mask by opening and thinning, `hedges.json`.
 
 ## Tile format `.ght`
 
