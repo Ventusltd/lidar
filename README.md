@@ -25,6 +25,7 @@ python src/pair_gpu.py --tiles E:/lidar-out/open-land-01
 ## Scripts added on the GPU lane
 
 - `src/piles_sweep.py`: solar table pile reveal on real ground, direct source against decoded tiles on the GPU.
+- `src/horizon_tiles.py`: terrain horizon angle in 32 azimuths per 4 m cell, GPU ray march paired against a max-pyramid, CPU witness.
 
 ## Tile format `.ght`
 
