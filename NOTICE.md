@@ -27,8 +27,12 @@ one of those before anyone is invited to reuse the code.
 - Fetch politely: sequential requests with a named User-Agent, as the code does now. OGL does not
   guarantee the service will stay available.
 
-## Planned inputs
-- **Copernicus DEM GLO-30** (fallback outside EA coverage). Adapted-data notice (verbatim):
+## Copernicus DEM GLO-30 (input for `copernicus.py`, fallback outside EA coverage)
+- Fetched by byte range from `https://copernicus-dem-30m.s3.amazonaws.com/` (public, no key). Access citation:
+  "Copernicus Digital Elevation Model (DEM) was accessed on DATE from https://registry.opendata.aws/copernicus-dem"
+  (dated in each `tiles.json`).
+- Licence: https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM
+- Adapted-data notice (verbatim; our tiles are resampled, so this is the one that applies):
   "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH
   2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved".
   Citation: https://doi.org/10.5270/ESA-c5d3d65. Tiles built from it must be labelled as surface
