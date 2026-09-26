@@ -1,124 +1,43 @@
 # lidar
 
-Free UK LiDAR yields 1m bare-earth 3D solar terrain.
-
-
-
-UK ENVIRONMENT AGENCY LIDAR AND OPEN TOPOGRAPHY
-
-
-
-LIDAR DATA OVERVIEW
-
-
-
-LiDAR stands for Light Detection and Ranging. It is an airborne mapping technology that uses aircraft-mounted laser systems to measure ground elevations across the landscape. The sensor fires hundreds of thousands of light pulses per second to the ground and records the precise return time of each pulse.
-
-
-
-The UK Environment Agency captures LiDAR elevation data across England to support flood risk management, coastal defense, and civil infrastructure planning.
-
-
-
-DATASET TYPES
-
-
-
-1\. Digital Terrain Model (DTM) - Bare Earth
-
-The DTM processes the raw laser point cloud to filter out vegetation, trees, hedges, and surface structures. The output is a bare-earth elevation grid.
-
-Usage for Solar: Allows direct computation of natural site topography, ground slope variations, drainage paths, structural post placement, and exact underground trench depths (0.6 meters for DC cabling and 0.9 meters for AC cabling).
-
-2\. Digital Surface Model (DSM) - Surface Objects
-
-The DSM preserves the top return of all physical features, including building roofs, tree canopies, and tall vegetation.
-
-Usage for Solar: Used for 3D shading simulations, setback boundary checks, and vegetation clearance analysis.
-
-3\. Point Cloud Data
-
-Raw classified 3D vector point clouds (LAZ format) containing discrete laser returns classified into ground, low vegetation, medium vegetation, high vegetation, and structural points.
-
-
-
-AVAILABLE RESOLUTIONS
-
-
-
-Data is supplied as GeoTIFF raster tiles formatted to the Ordnance Survey national grid reference system:
-
-
-
-\* 1 meter spatial resolution (National LIDAR Programme coverage across 99% of England)
-
-\* 50 centimeter spatial resolution (Select coastal and high-risk river catchments)
-
-\* 2 meter spatial resolution (Historical composite baseline archives)
-
-
-
-LICENSING TERMS
-
-
-
-The dataset is released under the Open Government Licence v3.0 (OGL v3.0).
-
-
-
-Key Permitted Uses:
-
-
-
-\* Commercial and non-commercial development without royalty fees.
-
-\* Processing, converting, and embedding raw elevation rasters directly into custom WebGL engines, terrain meshes, or local databases.
-
-\* Sub-licensing, publishing, or bundling derivative works with open-source software releases (compatible with Apache 2.0 and MIT licenses).
-
-
-
-Licensing Requirements:
-
-You must acknowledge the source of the data by including the official attribution statement in product documentation or application footers:
-
-
-
-Attribution Text:
-
-Contains Environment Agency information copyright Environment Agency and/or database right.
-
-
-
-DIRECT RESOURCE LINKS
-
-
-
-Environment Agency Data Services Portal
-
-\[https://environment.data.gov.uk/](https://environment.data.gov.uk/?utm\_source=gemini)
-
-
-
-National LIDAR Programme Open Data Directory
-
-\[https://environment.data.gov.uk/dataset/2e8d0733-4f43-48b4-9e51-631c25d1b0a9](https://environment.data.gov.uk/dataset/2e8d0733-4f43-48b4-9e51-631c25d1b0a9?utm\_source=gemini)
-
-
-
-LIDAR Survey Interactive Tile Download Map
-
-\[https://environment.data.gov.uk/survey](https://environment.data.gov.uk/survey?utm\_source=gemini)
-
-
-
-Defra Data Download Portal
-
-\[https://environment.data.gov.uk/DefraDataDownload/?Mode=survey](https://environment.data.gov.uk/DefraDataDownload/?Mode=survey\&utm\_source=gemini)
-
-
-
-Open Government Licence v3.0 Full Text
-
-\[https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/?utm\_source=gemini)
-
+Free UK LiDAR turned into small, checked 3D terrain tiles for a lightweight browser site world.
+
+## What it does
+
+1. **Fetch** a box of the Environment Agency LIDAR Composite DTM 1 m (bare earth) from the Defra WCS 2.0.1
+   service, in chunks of at most 1 km. No account or key is needed. Raw GeoTIFFs are cached outside the repo.
+2. **Read** them with tifffile and imagecodecs (no GDAL), confirm British National Grid (EPSG:27700), and mask
+   no-data cells.
+3. **Cut** 256 m tiles at 1 m spacing (257 × 257 samples, shared edges) in the `.ght` format below, with a
+   `tiles.json` index carrying a SHA-256 for every tile.
+4. **Check** on the GPU with two independent formulations and CPU witnesses (`src/pair_gpu.py`): every stored
+   height against the source, heights between samples two ways, and shared tile edges. Disagreements are
+   counted, never suppressed, and written to a seeded receipt.
+5. **Derive** slope and aspect tiles (`src/slope_tiles.py`) and earthworks volumes for trenches and platforms
+   (`src/earthworks_pair.py`), each checked the same way.
+
+```
+python src/build_site.py --name open-land-01 --e 400000 --n 210000 --size 2048
+python src/pair_gpu.py --tiles E:/lidar-out/open-land-01
+```
+
+## Tile format `.ght`
+
+Little-endian. 32-byte header: magic `GGH1`, u16 version (1), u16 samples (257), u16 spacing in mm, u16 flags,
+i32 south-west easting, i32 south-west northing, i32 base in cm, u16 min, u16 max, u32 no-data count.
+Body: samples × samples u16, rows south to north, west to east. Height in metres = (base + q) / 100;
+`0xFFFF` is no data. Heights are stored to the nearest centimetre, so the rounding error is at most 5 mm.
+
+## Accuracy
+
+The Environment Agency states that surveys in the composite had a vertical accuracy of ±15 cm RMSE. Heights are
+metres above Ordnance Datum Newlyn. Tiles reproduce the source to within 5 mm; they cannot be more accurate than
+the survey itself.
+
+## Licences
+
+- Code: Apache License 2.0 (`LICENSE`).
+- Terrain data derived from the Environment Agency LiDAR: Open Government Licence v3.0, with the attribution
+  "© Environment Agency copyright and/or database right 2022. All rights reserved." (`DATA-LICENCE.md`).
+- Our own documentation and receipts: CC BY 4.0 (`DATA-LICENCE.md`).
+- Every third-party source and library: `NOTICE.md`.
