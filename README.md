@@ -20,6 +20,9 @@ Free UK LiDAR turned into small, checked 3D terrain tiles for a lightweight brow
    (`src/viewshed.py`): an exact sight line per cell paired against a radial sweep on the GPU (Franklin and
    Ray, 1994), Earth curvature and refraction included, CPU witness in `src/viewshed_cpu.py`, `.gvs` tiles
    with a hashed `visibility-tiles.json`. Bare earth only: hedges, trees and buildings are not included.
+7. **Trace** contour lines at 0.5 m, 1 m and 5 m (`src/contour_tiles.py`, pair in `src/contour_pair.py`):
+   marching squares against row-and-column crossings on the GPU, a CPU witness, Douglas-Peucker at 0.25 m,
+   per-tile `ggc1` JSON indexed in `contour-tiles.json` with SHA-256s.
 
 ```
 python src/build_site.py --name open-land-01 --e 400000 --n 210000 --size 2048
@@ -32,6 +35,8 @@ python src/pair_gpu.py --tiles E:/lidar-out/open-land-01
 - `src/horizon_tiles.py`: terrain horizon angle in 32 azimuths per 4 m cell, GPU ray march paired against a max-pyramid, CPU witness.
 - `src/viewshed.py`: where a 3 m target is visible from roads and footpaths, sight lines paired against a radial sweep on the GPU.
 - `src/viewshed_cpu.py`: CPU witness for the viewshed pair.
+- `src/contour_tiles.py`: contour lines at 0.5, 1 and 5 m, simplified by Douglas-Peucker at 0.25 m, hashed `contour-tiles.json`.
+- `src/contour_pair.py`: GPU pair for contours (marching squares against row and column crossings) with a CPU witness.
 
 ## Tile format `.ght`
 

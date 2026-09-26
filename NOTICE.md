@@ -43,6 +43,12 @@ one of those before anyone is invited to reuse the code.
   experiments", *Proc. 6th International Symposium on Spatial Data Handling*, Edinburgh, 751-770 (`viewshed.py`).
 - Earth radius: Moritz, H. (2000) "Geodetic Reference System 1980", *Journal of Geodesy* 74, 128-133; refraction
   coefficient k = 0.13: Torge, W. and Mueller, J. (2012) *Geodesy*, 4th edn, de Gruyter, section 5.1.
+- Contours: marching squares after Lorensen, W.E. and Cline, H.E. (1987) "Marching cubes: a high resolution 3D
+  surface construction algorithm", *Computer Graphics* 21(4), 163-169; saddles after Nielson, G.M. and Hamann, B.
+  (1991) "The asymptotic decider: resolving the ambiguity in marching cubes", *Proc. IEEE Visualization '91*,
+  83-91; simplification by Douglas, D.H. and Peucker, T.K. (1973) "Algorithms for the reduction of the number of
+  points required to represent a digitized line or its caricature", *The Canadian Cartographer* 10(2), 112-122
+  (`contour_pair.py`, `contour_tiles.py`).
 - Georeferencing and grid: Ordnance Survey, *A Guide to Coordinate Systems in Great Britain* v3.6
   (2020), cited as method.
 
