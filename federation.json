@@ -1,0 +1,116 @@
+{
+  "schema": "federation/1",
+  "updated": "2026-09-27",
+  "this_repo": "lidar",
+  "org": "https://github.com/Ventusltd",
+  "members": [
+    {
+      "repo": "worlds-",
+      "url": "https://github.com/Ventusltd/worlds-",
+      "visibility": "public",
+      "role": "GPU maths, the furnace and the pair method",
+      "holds": "CuPy studies, the resident GPU furnace (gpu-furnace/), certificates that two formulations agree",
+      "licence": "not declared"
+    },
+    {
+      "repo": "graphics-engines-open-source",
+      "url": "https://github.com/Ventusltd/graphics-engines-open-source",
+      "visibility": "public",
+      "role": "explorer and public releases",
+      "holds": "the electrical scene explorer and the frozen public releases; web/ is the published site",
+      "licence": "MIT"
+    },
+    {
+      "repo": "site-world",
+      "url": null,
+      "visibility": "private",
+      "role": "3D site design",
+      "holds": "working branches of the 3D site design world; public releases are frozen copies published elsewhere",
+      "licence": "private"
+    },
+    {
+      "repo": "ventus-grid-engine",
+      "url": "https://github.com/Ventusltd/ventus-grid-engine",
+      "visibility": "public",
+      "role": "grid intelligence",
+      "holds": "grid data, genome and receivers; the repository root is the published site",
+      "licence": "Apache-2.0"
+    },
+    {
+      "repo": "spiders",
+      "url": "https://github.com/Ventusltd/spiders",
+      "visibility": "public",
+      "role": "inspect and describe",
+      "holds": "crawlers and describers that read public sources and write plain descriptions with their provenance",
+      "licence": "Apache-2.0"
+    },
+    {
+      "repo": "kuiper-drawing-engine",
+      "url": "https://github.com/Ventusltd/kuiper-drawing-engine",
+      "visibility": "public",
+      "role": "drawing",
+      "holds": "typed-command drawing of arrays and networks; web/ is the published site",
+      "licence": "see LICENSE-ARRAY"
+    },
+    {
+      "repo": "particle-physics-drawing-engine",
+      "url": "https://github.com/Ventusltd/particle-physics-drawing-engine",
+      "visibility": "public",
+      "role": "drawing",
+      "holds": "the particle and wafer drawing engine and its measurements",
+      "licence": "Apache-2.0"
+    },
+    {
+      "repo": "lidar",
+      "url": "https://github.com/Ventusltd/lidar",
+      "visibility": "public",
+      "role": "data pipeline",
+      "holds": "free national LiDAR to 1 m bare-earth terrain tiles",
+      "licence": "Apache-2.0 (code); data licences in DATA-LICENCE.md"
+    },
+    {
+      "repo": "soil",
+      "url": "https://github.com/Ventusltd/soil",
+      "visibility": "public",
+      "role": "data pipeline",
+      "holds": "soil, ground and environment sources to thermal inputs for cable ratings",
+      "licence": "not declared"
+    }
+  ],
+  "shared_rules": [
+    {
+      "id": "pair",
+      "name": "Pair method"
+    },
+    {
+      "id": "receipts",
+      "name": "Receipts"
+    },
+    {
+      "id": "cartridges",
+      "name": "Cartridges"
+    },
+    {
+      "id": "no-names",
+      "name": "No names"
+    },
+    {
+      "id": "licences",
+      "name": "Licences"
+    },
+    {
+      "id": "words",
+      "name": "Measured words"
+    },
+    {
+      "id": "moderation",
+      "name": "Moderation"
+    },
+    {
+      "id": "releases",
+      "name": "Releases"
+    }
+  ],
+  "rules_file": "DHARMA.md",
+  "cloud": "Claude Code cloud sessions clone a member, read its rules file and this map, and work on a branch with a pull request; nothing is pushed to main without review"
+}
